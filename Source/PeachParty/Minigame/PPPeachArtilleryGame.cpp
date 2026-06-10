@@ -148,10 +148,10 @@ void APPPeachArtilleryGame::OnProjectileImpact(const FVector& ImpactLocation, in
 
 	if (bT1Dead || bT2Dead)
 	{
-		EMatchResult Result = EMatchResult::Draw;
-		if (bT1Dead && !bT2Dead)      { Result = EMatchResult::Player2; }
-		else if (bT2Dead && !bT1Dead) { Result = EMatchResult::Player1; }
-		FinishWithResult(Result);
+		EMatchResult Outcome = EMatchResult::Draw;
+		if (bT1Dead && !bT2Dead)      { Outcome = EMatchResult::Player2; }
+		else if (bT2Dead && !bT1Dead) { Outcome = EMatchResult::Player1; }
+		FinishWithResult(Outcome);
 		return;
 	}
 
