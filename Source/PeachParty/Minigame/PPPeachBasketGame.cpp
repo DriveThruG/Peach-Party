@@ -71,11 +71,11 @@ void APPPeachBasketGame::SpawnPlay()
 	P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	P.Owner = this;
 
-	auto SpawnChar = [&](const FVector& Off, float Yaw, APPPlayerState* Owner, EPPTeam Team) -> APPBasketCharacter*
+	auto SpawnChar = [&](const FVector& Off, float Yaw, APPPlayerState* InOwner, EPPTeam InTeam) -> APPBasketCharacter*
 	{
 		APPBasketCharacter* C = World->SpawnActor<APPBasketCharacter>(
 			CharacterClass, O + Off, FRotator(0.f, Yaw, 0.f), P);
-		if (C) { C->InitCharacter(Owner, Team); }
+		if (C) { C->InitCharacter(InOwner, InTeam); }
 		return C;
 	};
 
