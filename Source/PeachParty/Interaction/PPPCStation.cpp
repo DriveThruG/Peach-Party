@@ -1,0 +1,149 @@
+#include "Interaction/PPPCStation.h"
+#include "Core/PPPlayerController.h"
+#include "Core/PPPlayerState.h"
+#include "Core/PPGameState.h"
+#include "Core/PPGameMode.h"
+#include "Core/PPTypes.h"
+#include "Camera/CameraComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Net/UnrealNetwork.h"
+
+APPPCStation::APPPCStation()
+{
+	PrimaryActorTick.bCanEverTick = false;
+	bReplicates = true;
+
+	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
+	SetRootComponent(SceneRoot);
+
+	DeskMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DeskMesh"));
+	DeskMesh->SetupAttachment(SceneRoot);
+
+	ScreenMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ScreenMesh"));
+	ScreenMesh->SetupAttachment(DeskMesh);
+	ScreenMesh->SetRelativeLocation(FVector(0.f, 0.f, 60.f));
+
+	// Camera sits in front of the screen, looking back at it, so the seated player sees the 2D game.
+	MinigameCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("MinigameCamera"));
+	MinigameCamera->SetupAttachment(ScreenMesh);
+	MinigameCamera->SetRelativeLocation(FVector(80.f, 0.f, 0.f));
+	MinigameCamera->SetRelativeRotation(FRotator(0.f, 180.f, 0.f));
+
+	SeatPoint = CreateDefaultSubobject<USceneComponent>(TEXT("SeatPoint"));
+	SeatPoint->SetupAttachment(SceneRoot);
+	SeatPoint->SetRelativeLocation(FVector(-80.f, 0.f, 0.f));
+}
+
+void APPPCStation::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(APPPCStation, OccupantPlayerState);
+}
+
+bool APPPCStation::CanInteract(APPPlayerController* InteractingController) const
+{
+	if (!InteractingController)
+	{
+		return false;
+	}
+
+	// Free seat -> anyone may sit. Occupied -> only the occupant may toggle (stand up).
+	if (!IsOccupied())
+	{
+		return true;
+	}
+	return OccupantPlayerState == InteractingController->PlayerState;
+}
+
+void APPPCStation::ServerInteract(APPPlayerController* InteractingController)
+{
+	if (!HasAuthority() || !InteractingController)
+	{
+		return;
+	}
+
+	// Toggle: interacting with the seat you're already in stands you up.
+	if (OccupantPlayerState == InteractingController->PlayerState)
+	{
+		ServerReleaseOccupant();
+		return;
+	}
+
+	if (IsOccupied())
+	{
+		return; // taken by someone else
+	}
+
+	SeatController(InteractingController);
+}
+
+void APPPCStation::SeatController(APPPlayerController* Controller)
+{
+	APPPlayerState* PS = Controller ? Cast<APPPlayerState>(Controller->PlayerState) : nullptr;
+	if (!PS)
+	{
+		return;
+	}
+
+	OccupantPlayerState = PS;
+	OnRep_Occupant(); // host mirror
+
+	Controller->SetSeatedStation(this);
+
+	// In the Lobby, sitting at a PC means "ready". Other phases use the seat for the minigame.
+	const APPGameState* GS = GetWorld() ? GetWorld()->GetGameState<APPGameState>() : nullptr;
+	if (GS && GS->GetCurrentPhase() == EMatchPhase::Lobby)
+	{
+		PS->SetReady(true);
+
+		if (APPGameMode* GM = GetWorld()->GetAuthGameMode<APPGameMode>())
+		{
+			GM->NotifyReadyStateChanged();
+		}
+	}
+}
+
+void APPPCStation::ServerReleaseOccupant()
+{
+	if (!HasAuthority() || !OccupantPlayerState)
+	{
+		return;
+	}
+
+	APPPlayerState* PS = OccupantPlayerState;
+
+	// Clear the controller's seat (blends its camera back to the pawn => instant return to 3D).
+	if (APPPlayerController* PC = PS->GetOwningController() ? Cast<APPPlayerController>(PS->GetOwningController()) : nullptr)
+	{
+		PC->SetSeatedStation(nullptr);
+	}
+
+	OccupantPlayerState = nullptr;
+	OnRep_Occupant(); // host mirror
+
+	const APPGameState* GS = GetWorld() ? GetWorld()->GetGameState<APPGameState>() : nullptr;
+	if (GS && GS->GetCurrentPhase() == EMatchPhase::Lobby)
+	{
+		PS->SetReady(false);
+
+		if (APPGameMode* GM = GetWorld()->GetAuthGameMode<APPGameMode>())
+		{
+			GM->NotifyReadyStateChanged();
+		}
+	}
+}
+
+void APPPCStation::OnRep_Occupant()
+{
+	BP_OnOccupantChanged(OccupantPlayerState);
+}
+
+void APPPCStation::OnBeginFocus()
+{
+	BP_OnFocusChanged(true);
+}
+
+void APPPCStation::OnEndFocus()
+{
+	BP_OnFocusChanged(false);
+}

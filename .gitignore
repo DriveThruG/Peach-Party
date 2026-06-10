@@ -1,0 +1,36 @@
+# ---------------------------------------------------------------------------
+# Unreal Engine 5 — generated / build artifacts (never commit these)
+# ---------------------------------------------------------------------------
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Build/
+Builds/
+
+# Generated solution / IDE files
+*.sln
+*.suo
+*.xcodeproj/
+*.xcworkspace/
+.vs/
+.vscode/
+.idea/
+*.VC.db
+*.opensdf
+*.sdf
+*.opendb
+
+# UE per-user config
+Config/*Editor*User*.ini
+Saved/Config/
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------------------------------------------------------------------------
+# Keep: Source/, Config/ (project defaults), Content/, *.uproject, *.Target.cs,
+#       *.Build.cs, .gitignore, README.md
+# ---------------------------------------------------------------------------
