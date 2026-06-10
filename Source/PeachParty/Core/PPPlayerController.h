@@ -48,6 +48,10 @@ public:
 	UFUNCTION(Server, Reliable)
 	void ServerCycleSpectate(int32 Dir);
 
+	/** Client -> Server: routed gameplay input for the minigame this player is currently in. */
+	UFUNCTION(Server, Reliable)
+	void ServerMinigameInput(FName Action, bool bPressed);
+
 	UFUNCTION(BlueprintPure, Category = "PeachParty|Interaction")
 	APPPCStation* GetSeatedStation() const { return SeatedStation; }
 

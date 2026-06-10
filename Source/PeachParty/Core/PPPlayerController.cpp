@@ -120,6 +120,17 @@ void APPPlayerController::ServerCycleSpectate_Implementation(int32 Dir)
 	SetServerViewTarget(nullptr);
 }
 
+void APPPlayerController::ServerMinigameInput_Implementation(FName Action, bool bPressed)
+{
+	// SERVER. Forward to the match this player is actually in; reject otherwise.
+	APPPlayerState* PS = GetPlayerState<APPPlayerState>();
+	APPMinigameBase* Match = PS ? PS->GetCurrentMinigame() : nullptr;
+	if (Match && !Match->IsFinished())
+	{
+		Match->HandleInput(PS, Action, bPressed);
+	}
+}
+
 void APPPlayerController::OnRep_View()
 {
 	RefreshViewTarget();

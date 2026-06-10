@@ -40,6 +40,14 @@ public:
 	/** SERVER. Decide a winner from the CURRENT state (natural or forced time-out). */
 	virtual EMatchResult ForceResolve() const;
 
+	/**
+	 * SERVER. Routed input from a participating player (via PlayerController::ServerMinigameInput).
+	 * Action is a game-defined verb ("Primary","Left","Right","Up","Down","Power+","Power-","Weapon").
+	 * Base is a no-op; each minigame interprets what it needs. Already authority-checked + gated to
+	 * the players actually in this match.
+	 */
+	virtual void HandleInput(APPPlayerState* Player, FName Action, bool bPressed) {}
+
 	/** SERVER. Global-timeout shortcut: resolve from current state and finish immediately. */
 	void ForceFinish();
 

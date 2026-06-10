@@ -42,6 +42,23 @@ protected:
 	void OnSpectateNext();
 	void OnSpectatePrev();
 
+	// ---- Minigame input forwarding (active only while in a match) ----
+	void OnMG_PrimaryPressed();
+	void OnMG_PrimaryReleased();
+	void OnMG_Left();
+	void OnMG_Right();
+	void OnMG_Up();
+	void OnMG_Down();
+	void OnMG_PowerUp();
+	void OnMG_PowerDown();
+	void OnMG_Weapon();
+
+	/** True if the local player is currently in a 1v1 match (reads replicated PlayerState). */
+	bool IsInMinigame() const;
+
+	/** Send an action to the server only when actually in a match (avoids RPC spam in the hub). */
+	void ForwardMinigameInput(FName Action, bool bPressed);
+
 	/** Owning-client trace that updates the currently focused interactable. */
 	void UpdateFocus();
 

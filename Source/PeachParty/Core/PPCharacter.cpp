@@ -1,5 +1,6 @@
 #include "Core/PPCharacter.h"
 #include "Core/PPPlayerController.h"
+#include "Core/PPPlayerState.h"
 #include "Interaction/PPInteractable.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
@@ -48,10 +49,50 @@ void APPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &APPCharacter::OnInteractPressed);
 	PlayerInputComponent->BindAction("SpectateNext", IE_Pressed, this, &APPCharacter::OnSpectateNext);
 	PlayerInputComponent->BindAction("SpectatePrev", IE_Pressed, this, &APPCharacter::OnSpectatePrev);
+
+	// Minigame controls — forwarded to the active match (no-op in the hub).
+	PlayerInputComponent->BindAction("MGPrimary", IE_Pressed, this, &APPCharacter::OnMG_PrimaryPressed);
+	PlayerInputComponent->BindAction("MGPrimary", IE_Released, this, &APPCharacter::OnMG_PrimaryReleased);
+	PlayerInputComponent->BindAction("MGLeft", IE_Pressed, this, &APPCharacter::OnMG_Left);
+	PlayerInputComponent->BindAction("MGRight", IE_Pressed, this, &APPCharacter::OnMG_Right);
+	PlayerInputComponent->BindAction("MGUp", IE_Pressed, this, &APPCharacter::OnMG_Up);
+	PlayerInputComponent->BindAction("MGDown", IE_Pressed, this, &APPCharacter::OnMG_Down);
+	PlayerInputComponent->BindAction("MGPowerUp", IE_Pressed, this, &APPCharacter::OnMG_PowerUp);
+	PlayerInputComponent->BindAction("MGPowerDown", IE_Pressed, this, &APPCharacter::OnMG_PowerDown);
+	PlayerInputComponent->BindAction("MGWeapon", IE_Pressed, this, &APPCharacter::OnMG_Weapon);
 }
+
+bool APPCharacter::IsInMinigame() const
+{
+	const APPPlayerState* PS = GetPlayerState<APPPlayerState>();
+	return PS && PS->GetCurrentMinigame() != nullptr;
+}
+
+void APPCharacter::ForwardMinigameInput(FName Action, bool bPressed)
+{
+	if (!IsInMinigame())
+	{
+		return;
+	}
+	if (APPPlayerController* PC = Cast<APPPlayerController>(GetController()))
+	{
+		PC->ServerMinigameInput(Action, bPressed);
+	}
+}
+
+void APPCharacter::OnMG_PrimaryPressed()  { ForwardMinigameInput(TEXT("Primary"), true); }
+void APPCharacter::OnMG_PrimaryReleased() { ForwardMinigameInput(TEXT("Primary"), false); }
+void APPCharacter::OnMG_Left()            { ForwardMinigameInput(TEXT("Left"), true); }
+void APPCharacter::OnMG_Right()           { ForwardMinigameInput(TEXT("Right"), true); }
+void APPCharacter::OnMG_Up()              { ForwardMinigameInput(TEXT("Up"), true); }
+void APPCharacter::OnMG_Down()            { ForwardMinigameInput(TEXT("Down"), true); }
+void APPCharacter::OnMG_PowerUp()         { ForwardMinigameInput(TEXT("Power+"), true); }
+void APPCharacter::OnMG_PowerDown()       { ForwardMinigameInput(TEXT("Power-"), true); }
+void APPCharacter::OnMG_Weapon()          { ForwardMinigameInput(TEXT("Weapon"), true); }
 
 void APPCharacter::MoveForward(float Value)
 {
+	if (IsInMinigame()) { return; } // hub pawn is parked while playing a minigame
 	if (Controller && Value != 0.f)
 	{
 		const FRotator YawRot(0.f, Controller->GetControlRotation().Yaw, 0.f);
@@ -61,6 +102,7 @@ void APPCharacter::MoveForward(float Value)
 
 void APPCharacter::MoveRight(float Value)
 {
+	if (IsInMinigame()) { return; }
 	if (Controller && Value != 0.f)
 	{
 		const FRotator YawRot(0.f, Controller->GetControlRotation().Yaw, 0.f);

@@ -183,6 +183,71 @@ FinishMinigamePhase (or global timeout): team scores are already final -> StartR
 
 ### Blueprint integration points (minigame)
 
-- `APPMinigameBase::BP_OnMinigameStarted` / `BP_OnMinigameFinished` — spawn visuals, results screen.
-- Subclass `APPPeachBasketGame` / `APPPeachArtilleryGame` in BP to drop in meshes/VFX; the C++
-  `OnMinigameStarted` hooks are where the actual playfield gets spawned (currently `TODO` stubs).
+- `APPMinigameBase::BP_OnMinigameStarted` / `BP_OnMinigameFinished` — results screen, sounds.
+- Subclass `APPPeachBasketGame` / `APPPeachArtilleryGame` in BP only to swap the placeholder engine
+  meshes for art. The gameplay is fully implemented in C++ (below) — no Blueprint required to play.
+
+---
+
+## Minigame gameplay (implemented)
+
+Both games are `APPMinigameBase` subclasses. **Everything gameplay-relevant runs on the server;
+clients send input and render replicated proxies.** Input arrives via
+`APPPlayerController::ServerMinigameInput(Action, bPressed)` → `Minigame::HandleInput`, gated to the
+players actually in that match. Both bring their own floor (arenas are empty space) and use engine
+`BasicShapes` so they run with zero art.
+
+### Peach Basket (`PPPeachBasketGame` + `PPBasketBall`, `PPBasketCharacter`, `PPBasket`)
+
+One input — **Space**. Each player drives **two** wobbly physics characters at once.
+
+- **Press Space** → both characters jump (impulse along their *current, possibly tilted* facing) and
+  **start charging** — arms rise slowly (`ArmAngleDeg` climbs).
+- **Release** → if a character holds the ball, it's thrown. **The arm angle at release sets the
+  launch elevation**: too low (you just grabbed it) = short/weak; the sweet spot arcs it into the
+  basket. Horizontal direction = body facing, so you must also be oriented right — that's the chaos.
+  Speed is fixed; only elevation varies (+ a small random spread).
+- **Grab / steal / score are server proximity checks in `Tick`** — no collision channels to
+  misconfigure. Arms must be up (charging) to grab or steal; an enemy hand near a held ball steals it.
+- **Score** = ball within `ScoreRadius` of the enemy basket → +1, reset all positions, play on.
+  First to `TargetScore` wins; time-out falls back to higher score.
+
+| Runs on **server** | Runs on **client** |
+|---|---|
+| Physics simulation (characters + ball), arm-charge advance, grab/steal/score logic, throw impulse, reset | Render replicated transforms; animate arm raise locally from the `bCharging` flag; HUD |
+
+**Replication:** characters + ball are server-simulated with **movement replication** (clients are
+proxies, no local physics). Ball `Holder` and character `bCharging` replicate; the precise arm angle
+is server-only (clients approximate the arm visual). All actors `bAlwaysRelevant` (far arenas).
+
+### Peach Artillery (`PPPeachArtilleryGame` + `PPTank`, `PPProjectile`)
+
+Strictly turn-based. **Only the active player's input is accepted, and only while no shell is flying**
+(`ActiveSlot` + `bTurnInProgress`, both replicated → everyone agrees whose turn it is).
+
+- Pre-shot decisions (discrete key presses): **A/D** move (consumes non-regenerating fuel), **W/S**
+  aim, **R/F** power, **Q** weapon, **Space** fire.
+- On fire, a `PPProjectile` launches; its `UProjectileMovementComponent` integrates the gravity arc on
+  the server (movement-replicated so clients see it fly). First blocking hit → server applies **area
+  damage with linear falloff** (full at centre, 0 at the rim) to any tank in radius → KO ends the
+  match, else the turn switches. A lifespan-expiry safety reports a miss so a lost shell can't hang the turn.
+- **Win** = enemy tank destroyed; **time-out** = higher remaining health (`ForceResolve` override).
+
+| Runs on **server** | Runs on **client** |
+|---|---|
+| Turn ownership, all tank state changes (move/aim/power/weapon/fire), projectile flight + impact, damage, win check | Render tanks/shell from replicated state; barrel tracks aim via `OnRep`; HUD reads health/fuel/power/turn |
+
+**Replication:** tanks replicate health/fuel/aim/power/weapon/facing (kinematic — moved by the server,
+transform-replicated). The shell replicates movement only. The game replicates `ActiveSlot`,
+`bTurnInProgress`, and the two tank pointers.
+
+### Simplifications made for stability (Stability > complexity)
+
+- **Server-authoritative physics**, clients are proxies — no client prediction/rollback to desync.
+  Trade-off: a touch of input latency on the controlled bodies (fine for a chaotic party game / listen server).
+- **Proximity checks instead of collision channels** for basket grab/steal/score — nothing to silently
+  misconfigure across object types/responses.
+- **Tanks are kinematic** (no physics) — turn state stays deterministic and trivial to replicate.
+- **No terrain destruction, no wind, fixed 2-weapon set, no multi-shot/guided** — all explicitly out of
+  scope to avoid risky systems. Knockback omitted. Hooks/data are in place to add them later.
+- **Engine `BasicShapes`** as placeholder meshes (guarded `FObjectFinder`) — runs with no art; swap in BP.
