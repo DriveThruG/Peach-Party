@@ -70,25 +70,28 @@ void APPPeachBasketGame::FitBackgroundToScreen()
 	{
 		Background->SetSprite(S);
 	}
-	const float CamZ = GameCamera ? GameCamera->GetRelativeLocation().Z : 0.f;
+	const float CamZ = GameCamera ? (float)GameCamera->GetRelativeLocation().Z : 0.f;
 	Background->SetRelativeLocation(FVector(0.f, BackgroundOffset.Y, CamZ));
 
 	// Under ORTHO the view shows EXACTLY OrthoWidth world-units across the screen width, and
 	// OrthoWidth/aspect vertically. So the rectangle we must cover is known exactly.
+	// (FVector2D components are double under LWC -> cast to float to avoid FMath::Max ambiguity.)
 	FVector2D Viewport(1920.f, 1080.f);
 	if (GEngine && GEngine->GameViewport)
 	{
 		GEngine->GameViewport->GetViewportSize(Viewport);
 	}
-	const float Aspect = Viewport.X / FMath::Max(1.f, Viewport.Y);
+	const float VpX = (float)Viewport.X;
+	const float VpY = (float)Viewport.Y;
+	const float Aspect = VpX / FMath::Max(1.f, VpY);
 	const float NeedHalfW = OrthoWidth * 0.5f;
 	const float NeedHalfH = (OrthoWidth / FMath::Max(0.01f, Aspect)) * 0.5f;
 
 	// Native (scale-1) half-size of the sprite in world units, MEASURED — independent of the sprite's
 	// pixels-per-unit. The sprite faces -Y, so its width is along X and its height along Z.
 	const FBoxSphereBounds LB = Background->CalcLocalBounds();
-	const float NativeHalfW = FMath::Max(1.f, LB.BoxExtent.X);
-	const float NativeHalfH = FMath::Max(1.f, LB.BoxExtent.Z);
+	const float NativeHalfW = FMath::Max(1.f, (float)LB.BoxExtent.X);
+	const float NativeHalfH = FMath::Max(1.f, (float)LB.BoxExtent.Z);
 
 	// COVER fit: the larger of the two ratios guarantees both dimensions are filled (may crop a little).
 	// BackgroundScale (>=1) is an extra bleed margin so edges never show under rounding/resize.
