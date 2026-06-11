@@ -20,8 +20,8 @@ public class PeachParty : ModuleRules
 			"Core",
 			"CoreUObject",
 			"Engine",
-			"InputCore"
-			// "Paper2D"  // add when the 2D minigame sprite layer is implemented
+			"InputCore",
+			"Paper2D"  // 2D sprite visuals for the minigames
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]

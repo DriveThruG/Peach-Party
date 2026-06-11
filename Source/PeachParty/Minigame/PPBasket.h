@@ -5,6 +5,7 @@
 #include "PPBasket.generated.h"
 
 class UStaticMeshComponent;
+class UPaperSpriteComponent;
 class USceneComponent;
 class APPPlayerState;
 
@@ -32,6 +33,9 @@ public:
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
 	UStaticMeshComponent* Ring;
+
+	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
+	UPaperSpriteComponent* Sprite;
 
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
 	USceneComponent* Mouth;

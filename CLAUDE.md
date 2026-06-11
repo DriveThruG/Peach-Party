@@ -101,7 +101,20 @@ Peach Artillery. **Each individual 1v1 win = +1 team point.**
 - `APPPeachBasketGame` (+ `APPBasketBall`, `APPBasketCharacter`, `APPBasket`).
 - `APPPeachArtilleryGame` (+ `APPTank`, `APPProjectile`, `PPArtilleryTypes.h`).
 
-### Minigame visuals (filler, 2D look)
+### Paper2D sprites (Peach Basket)
+Paper2D is enabled (plugin + `Paper2D` in Build.cs). The basket **character** now uses 3
+`UPaperSpriteComponent` layers (back arm = `Arm_Left`, body = `Player0X_Body`, front arm =
+`Player0X_Arm`) under a shoulder `ArmPivot` that pitches to raise the arms. `SpriteVariant` (1-4,
+replicated) picks the Player0X art (textures already team-coloured). Ball + hoop also have sprite
+components (hide the placeholder mesh when the sprite resolves). Physics bodies (basket char + ball)
+are locked to the **X-Z plane** (`BodyInstance.DOFMode = EDOFMode::XZPlane`) → a true 2D side view;
+chars face the camera (yaw 0), jump along their tilted up-vector, throw toward the enemy (FacingSign).
+Sprites loaded by path from `/Game/PeachParty/Minigames/BasketPeach/Graphics/<Tex>_Sprite` (user must
+create the sprites via right-click texture → Create Sprite; **those assets live in the user's Content,
+not the repo** — they must be preserved on update). `SpriteFacing` (EditDefaultsOnly) tunes camera
+facing if sprites look edge-on. Artillery still uses the flat-quad filler below.
+
+### Minigame visuals (filler, 2D look — artillery + fallback)
 Until real Paper2D sprite assets exist (Claude can't author `.uasset`/textures headless), visuals are
 **flat camera-facing quads** (cubes flattened along Y, the camera-depth axis) tinted by a dynamic
 material via `Minigame/PPVisual.h` (`Tint` + `TeamColor`: A=blue, B=red; ball=orange, hoop=red,
@@ -204,3 +217,7 @@ lighting otherwise "competes" with it; only enable on a truly empty level).
 - **2026-06-11** — Flow close-out: after both minigames, `FinishMinigamePhase` releases every PC
   station so players stand up (PCs off) and return to the 3D world. Placeholder stations bumped to 8
   (one per max player) so everyone can sit / ready up.
+- **2026-06-11** — Paper2D enabled; Peach Basket switched to real sprites referencing the user's
+  imported textures by path (body + 2 arms layered, ball, hoop). Physics locked to X-Z plane (2D side
+  view), chars face camera, 4 art variants via replicated `SpriteVariant`. User must Create Sprite
+  from each texture (names `<Tex>_Sprite`) and keep their `Content/` on update.

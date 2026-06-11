@@ -1,6 +1,9 @@
 #include "Minigame/PPBasketBall.h"
 #include "Minigame/PPVisual.h"
 #include "Components/StaticMeshComponent.h"
+#include "PaperSpriteComponent.h"
+#include "PaperSprite.h"
+#include "PhysicsEngine/BodyInstance.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Net/UnrealNetwork.h"
 
@@ -16,13 +19,25 @@ APPBasketBall::APPBasketBall()
 	Mesh->SetCollisionProfileName(TEXT("PhysicsActor"));
 	Mesh->SetSimulatePhysics(true);
 	Mesh->SetNotifyRigidBodyCollision(true);
+	Mesh->BodyInstance.DOFMode = EDOFMode::XZPlane; // keep the ball in the 2D plane
 
-	// Visible primitive out of the box (editor content); guarded so it still compiles/runs without it.
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMesh(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
 	if (SphereMesh.Succeeded())
 	{
 		Mesh->SetStaticMesh(SphereMesh.Object);
 		Mesh->SetWorldScale3D(FVector(0.4f));
+	}
+
+	Sprite = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("Sprite"));
+	Sprite->SetupAttachment(Mesh);
+	Sprite->SetRelativeRotation(FRotator(0.f, 90.f, 0.f)); // face the camera; tune if edge-on
+	Sprite->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	static ConstructorHelpers::FObjectFinder<UPaperSprite> BallSpr(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Ball_Sprite.Ball_Sprite"));
+	if (BallSpr.Succeeded())
+	{
+		Sprite->SetSprite(BallSpr.Object);
+		Mesh->SetVisibility(false); // hide the placeholder sphere; keep its collision
 	}
 }
 

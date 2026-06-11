@@ -1,13 +1,14 @@
 #include "Minigame/PPBasketCharacter.h"
-#include "Minigame/PPVisual.h"
 #include "Components/CapsuleComponent.h"
-#include "Components/StaticMeshComponent.h"
+#include "PaperSpriteComponent.h"
+#include "PaperSprite.h"
+#include "PhysicsEngine/BodyInstance.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Net/UnrealNetwork.h"
 
 APPBasketCharacter::APPBasketCharacter()
 {
-	PrimaryActorTick.bCanEverTick = true; // server raises arms; everyone eases the visual arms
+	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
 	bAlwaysRelevant = true;
 	SetReplicateMovement(true);
@@ -20,33 +21,55 @@ APPBasketCharacter::APPBasketCharacter()
 	Body->SetCenterOfMass(FVector(0.f, 0.f, 50.f)); // tippy on purpose
 	Body->SetAngularDamping(0.5f);
 	Body->SetLinearDamping(0.1f);
+	// Lock to the X-Z plane: a true 2D side-view (move in X/Z, only roll about Y to wobble/tip).
+	Body->BodyInstance.DOFMode = EDOFMode::XZPlane;
 
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMesh(TEXT("/Engine/BasicShapes/Cube.Cube"));
+	// --- Paper2D sprite layers (back arm, body, front arm). Y offsets order them vs the camera (-Y). ---
+	SpriteBody = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("SpriteBody"));
+	SpriteBody->SetupAttachment(Body);
+	SpriteBody->SetRelativeLocationAndRotation(FVector(0.f, 0.f, 0.f), SpriteFacing);
+	SpriteBody->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	// Flat body+head quad: thin along Y (the camera depth axis) so it reads as a 2D sprite.
-	BodyMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh"));
-	BodyMesh->SetupAttachment(Body);
-	BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	BodyMesh->SetRelativeScale3D(FVector(0.5f, 0.1f, 1.6f));
-	if (CubeMesh.Succeeded()) { BodyMesh->SetStaticMesh(CubeMesh.Object); }
+	ArmPivot = CreateDefaultSubobject<USceneComponent>(TEXT("ArmPivot"));
+	ArmPivot->SetupAttachment(Body);
+	ArmPivot->SetRelativeLocation(FVector(0.f, 0.f, 45.f)); // shoulder height
 
-	// Separate arms quad — rotates up while charging.
-	ArmsMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ArmsMesh"));
-	ArmsMesh->SetupAttachment(Body);
-	ArmsMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	ArmsMesh->SetRelativeLocation(FVector(20.f, 0.f, 45.f)); // shoulder, slightly forward
-	ArmsMesh->SetRelativeScale3D(FVector(0.6f, 0.12f, 0.16f));
-	if (CubeMesh.Succeeded()) { ArmsMesh->SetStaticMesh(CubeMesh.Object); }
+	SpriteFront = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("SpriteFront"));
+	SpriteFront->SetupAttachment(ArmPivot);
+	SpriteFront->SetRelativeLocationAndRotation(FVector(0.f, -2.f, 0.f), SpriteFacing); // closest to camera
+	SpriteFront->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	SpriteBack = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("SpriteBack"));
+	SpriteBack->SetupAttachment(ArmPivot);
+	SpriteBack->SetRelativeLocationAndRotation(FVector(0.f, 2.f, 0.f), SpriteFacing); // behind
+	SpriteBack->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	HandPoint = CreateDefaultSubobject<USceneComponent>(TEXT("HandPoint"));
 	HandPoint->SetupAttachment(Body);
 	HandPoint->SetRelativeLocation(FVector(45.f, 0.f, 70.f));
+
+	// Load the sprite assets by path (user creates them via right-click texture -> Create Sprite;
+	// default sprite name is <Texture>_Sprite in the same folder). Null until they exist.
+	static ConstructorHelpers::FObjectFinder<UPaperSprite> B1(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player01_Body_Sprite.Player01_Body_Sprite"));
+	static ConstructorHelpers::FObjectFinder<UPaperSprite> B2(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player02_Body_Sprite.Player02_Body_Sprite"));
+	static ConstructorHelpers::FObjectFinder<UPaperSprite> B3(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player03_Body_Sprite.Player03_Body_Sprite"));
+	static ConstructorHelpers::FObjectFinder<UPaperSprite> B4(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player04_Body_Sprite.Player04_Body_Sprite"));
+	static ConstructorHelpers::FObjectFinder<UPaperSprite> A1(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/PLayer01_Arm_Sprite.PLayer01_Arm_Sprite"));
+	static ConstructorHelpers::FObjectFinder<UPaperSprite> A2(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player02_Arm_Sprite.Player02_Arm_Sprite"));
+	static ConstructorHelpers::FObjectFinder<UPaperSprite> A3(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player03_Arm_Sprite.Player03_Arm_Sprite"));
+	static ConstructorHelpers::FObjectFinder<UPaperSprite> A4(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player04_Arm_Sprite.Player04_Arm_Sprite"));
+	static ConstructorHelpers::FObjectFinder<UPaperSprite> Back(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Arm_Left_Sprite.Arm_Left_Sprite"));
+
+	BodySprites[0] = B1.Object; BodySprites[1] = B2.Object; BodySprites[2] = B3.Object; BodySprites[3] = B4.Object;
+	ArmSprites[0]  = A1.Object; ArmSprites[1]  = A2.Object; ArmSprites[2]  = A3.Object; ArmSprites[3]  = A4.Object;
+	BackArmSprite  = Back.Object;
 }
 
 void APPBasketCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(APPBasketCharacter, bCharging);
+	DOREPLIFETIME(APPBasketCharacter, SpriteVariant);
 	DOREPLIFETIME(APPBasketCharacter, Team);
 }
 
@@ -54,27 +77,28 @@ void APPBasketCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	// SERVER: raise the gameplay arm angle while charging.
 	if (HasAuthority() && bCharging)
 	{
 		ArmAngleDeg = FMath::Min(MaxArmAngleDeg, ArmAngleDeg + ArmRaiseRateDegPerSec * DeltaSeconds);
 	}
 
-	// ALL machines: ease the visual arms toward raised/lowered (from the replicated bCharging).
+	// Ease the visual arm raise everywhere (from replicated bCharging). Pitch the shoulder pivot.
 	const float Target = bCharging ? 75.f : 0.f;
 	VisualArmAngle = FMath::FInterpTo(VisualArmAngle, Target, DeltaSeconds, 8.f);
-	if (ArmsMesh)
+	if (ArmPivot)
 	{
-		ArmsMesh->SetRelativeRotation(FRotator(VisualArmAngle, 0.f, 0.f)); // pitch about Y -> swings in view
+		ArmPivot->SetRelativeRotation(FRotator(VisualArmAngle, 0.f, 0.f));
 	}
 }
 
-void APPBasketCharacter::InitCharacter(APPPlayerState* InOwner, EPPTeam InTeam)
+void APPBasketCharacter::InitCharacter(APPPlayerState* InOwner, EPPTeam InTeam, int32 InVariant)
 {
 	OwningPlayer = InOwner;
 	Team = InTeam;
-	ApplyTeamColor();   // server
-	OnRep_Team();       // host mirror
+	FacingSign = (InTeam == EPPTeam::TeamA) ? 1.f : -1.f;
+	SpriteVariant = FMath::Clamp(InVariant, 1, 4);
+	ApplySprites();   // server
+	OnRep_Variant();  // host mirror
 }
 
 void APPBasketCharacter::DoJump(float UpImpulse, float ForwardImpulse)
@@ -83,7 +107,8 @@ void APPBasketCharacter::DoJump(float UpImpulse, float ForwardImpulse)
 	{
 		return;
 	}
-	const FVector Impulse = GetActorForwardVector() * ForwardImpulse + FVector::UpVector * UpImpulse;
+	// Jump along the body's CURRENT (tilted) up vector -> wobble produces angled jumps. Small bias toward the enemy.
+	const FVector Impulse = GetActorUpVector() * UpImpulse + FVector(FacingSign, 0.f, 0.f) * (ForwardImpulse * 0.4f);
 	Body->AddImpulse(Impulse, NAME_None, /*bVelChange=*/true);
 }
 
@@ -135,15 +160,16 @@ FVector APPBasketCharacter::GetHandLocation() const
 
 FVector APPBasketCharacter::GetThrowDirection() const
 {
-	FVector Fwd = GetActorForwardVector();
-	Fwd.Z = 0.f;
-	return Fwd.GetSafeNormal();
+	// Throw horizontally toward the enemy basket (elevation comes from the arm angle).
+	return FVector(FacingSign, 0.f, 0.f);
 }
 
-void APPBasketCharacter::ApplyTeamColor()
+void APPBasketCharacter::ApplySprites()
 {
-	PPVisual::Tint(BodyMesh, PPVisual::TeamColor(Team));
-	PPVisual::Tint(ArmsMesh, PPVisual::TeamColor(Team) * 1.3f); // arms a touch brighter
+	const int32 Idx = FMath::Clamp(SpriteVariant - 1, 0, 3);
+	if (SpriteBody)  { SpriteBody->SetSprite(BodySprites[Idx]); }
+	if (SpriteFront) { SpriteFront->SetSprite(ArmSprites[Idx]); }
+	if (SpriteBack)  { SpriteBack->SetSprite(BackArmSprite); }
 }
 
 void APPBasketCharacter::OnRep_Charging()
@@ -151,7 +177,7 @@ void APPBasketCharacter::OnRep_Charging()
 	BP_OnChargingChanged(bCharging);
 }
 
-void APPBasketCharacter::OnRep_Team()
+void APPBasketCharacter::OnRep_Variant()
 {
-	ApplyTeamColor();
+	ApplySprites();
 }

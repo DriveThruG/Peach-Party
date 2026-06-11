@@ -6,18 +6,20 @@
 #include "PPBasketCharacter.generated.h"
 
 class UCapsuleComponent;
-class UStaticMeshComponent;
+class UPaperSpriteComponent;
+class UPaperSprite;
 class USceneComponent;
 class APPPlayerState;
 
 /**
- * One of a player's TWO peach characters in Peach Basket. Physics is a wobbly server-simulated capsule
- * (no uprighting); the VISUAL is 2D filler: a flat body+head quad plus a separate arms quad that
- * rotates up while charging (matching the requested two-part sprite layout). Team-tinted (A blue / B red).
+ * One of a player's TWO peach characters in Peach Basket. Physics is a server-simulated capsule
+ * locked to the X-Z plane (a true 2D side-view: it can move left/right + up, and only rolls about Y
+ * to wobble/tip). The VISUAL is three stacked Paper2D sprites: a shared back arm (Arm_Left), the body
+ * (Player0X_Body), and the front arm (Player0X_Arm). Both arms rotate up while charging.
  *
- * THROW = CHARGE: while Space is held ArmAngleDeg rises (server). The angle at RELEASE sets the throw
- * elevation. Horizontal direction = body facing (tilt = chaos). Only bCharging + Team replicate; the
- * precise angle is server-only and the client animates the arm quad locally from bCharging.
+ * SpriteVariant (1..4) picks which Player0X art to show (already team-coloured in the textures, so no
+ * tint needed). Replicated so clients show the right sprites. THROW = CHARGE: arm angle at release
+ * sets elevation; horizontal direction is toward the enemy basket (FacingSign).
  */
 UCLASS()
 class PEACHPARTY_API APPBasketCharacter : public AActor
@@ -30,8 +32,8 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	/** SERVER. Bind owner/team (also tints the body on the server). */
-	void InitCharacter(APPPlayerState* InOwner, EPPTeam InTeam);
+	/** SERVER. Bind owner/team and which Player0X art variant (1..4) to show. */
+	void InitCharacter(APPPlayerState* InOwner, EPPTeam InTeam, int32 InVariant);
 
 	void DoJump(float UpImpulse, float ForwardImpulse);
 	void StartCharge();
@@ -53,15 +55,25 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
 	float ArmRaiseRateDegPerSec = 120.f;
 
+	/** How the sprites face the camera. Tune if sprites appear edge-on (try yaw +/-90 or roll 90). */
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
+	FRotator SpriteFacing = FRotator(0.f, 90.f, 0.f);
+
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
-	UCapsuleComponent* Body;          // simulating physics root (collision only)
+	UCapsuleComponent* Body;          // simulating physics root (collision only), locked to X-Z plane
 
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
-	UStaticMeshComponent* BodyMesh;   // flat body+head quad (visual)
+	USceneComponent* ArmPivot;           // shoulder pivot; pitched to raise both arms
 
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
-	UStaticMeshComponent* ArmsMesh;   // flat arms quad (rotates while charging)
+	UPaperSpriteComponent* SpriteBack;   // shared back arm (Arm_Left)
+
+	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
+	UPaperSpriteComponent* SpriteBody;   // Player0X_Body
+
+	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
+	UPaperSpriteComponent* SpriteFront;  // Player0X_Arm (front)
 
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
 	USceneComponent* HandPoint;
@@ -69,23 +81,36 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_Charging)
 	bool bCharging = false;
 
-	/** Replicated so clients can team-tint. */
-	UPROPERTY(ReplicatedUsing = OnRep_Team)
+	UPROPERTY(ReplicatedUsing = OnRep_Variant)
+	int32 SpriteVariant = 1;
+
+	UPROPERTY(Replicated)
 	EPPTeam Team = EPPTeam::None;
 
 	float ArmAngleDeg = 0.f;     // SERVER gameplay angle
 	float VisualArmAngle = 0.f;  // LOCAL eased visual angle (all machines)
+	float FacingSign = 1.f;      // +1 = throws toward +X, -1 = toward -X
 
 	UPROPERTY()
 	APPPlayerState* OwningPlayer = nullptr;
+
+	// Sprite assets loaded by path (same on every machine); picked by SpriteVariant.
+	UPROPERTY()
+	UPaperSprite* BodySprites[4] = { nullptr, nullptr, nullptr, nullptr };
+
+	UPROPERTY()
+	UPaperSprite* ArmSprites[4] = { nullptr, nullptr, nullptr, nullptr };
+
+	UPROPERTY()
+	UPaperSprite* BackArmSprite = nullptr;
 
 	UFUNCTION()
 	void OnRep_Charging();
 
 	UFUNCTION()
-	void OnRep_Team();
+	void OnRep_Variant();
 
-	void ApplyTeamColor();
+	void ApplySprites();
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "PeachParty|Basket")
 	void BP_OnChargingChanged(bool bNowCharging);

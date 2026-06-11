@@ -71,27 +71,29 @@ void APPPeachBasketGame::SpawnPlay()
 	P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	P.Owner = this;
 
-	auto SpawnChar = [&](const FVector& Off, float Yaw, APPPlayerState* InOwner, EPPTeam InTeam) -> APPBasketCharacter*
+	auto SpawnChar = [&](const FVector& Off, APPPlayerState* InOwner, EPPTeam InTeam, int32 Variant) -> APPBasketCharacter*
 	{
+		// Yaw 0: all face the camera (2D side view). Team/throw side comes from the team, not yaw.
 		APPBasketCharacter* C = World->SpawnActor<APPBasketCharacter>(
-			CharacterClass, O + Off, FRotator(0.f, Yaw, 0.f), P);
-		if (C) { C->InitCharacter(InOwner, InTeam); }
+			CharacterClass, O + Off, FRotator::ZeroRotator, P);
+		if (C) { C->InitCharacter(InOwner, InTeam, Variant); }
 		return C;
 	};
 
 	APPPlayerState* P1 = GetPlayer1();
 	APPPlayerState* P2 = GetPlayer2();
 
+	// Same depth/ground (Y=0, Z=120), spread along X = the screen horizontal (like the reference).
 	Player1Chars.Reset();
 	Player2Chars.Reset();
-	Player1Chars.Add(SpawnChar(FVector(-400.f, -150.f, 120.f),   0.f, P1, EPPTeam::TeamA));
-	Player1Chars.Add(SpawnChar(FVector(-400.f,  150.f, 120.f),   0.f, P1, EPPTeam::TeamA));
-	Player2Chars.Add(SpawnChar(FVector( 400.f, -150.f, 120.f), 180.f, P2, EPPTeam::TeamB));
-	Player2Chars.Add(SpawnChar(FVector( 400.f,  150.f, 120.f), 180.f, P2, EPPTeam::TeamB));
+	Player1Chars.Add(SpawnChar(FVector(-420.f, 0.f, 120.f), P1, EPPTeam::TeamA, 1));
+	Player1Chars.Add(SpawnChar(FVector(-220.f, 0.f, 120.f), P1, EPPTeam::TeamA, 2));
+	Player2Chars.Add(SpawnChar(FVector( 220.f, 0.f, 120.f), P2, EPPTeam::TeamB, 3));
+	Player2Chars.Add(SpawnChar(FVector( 420.f, 0.f, 120.f), P2, EPPTeam::TeamB, 4));
 
-	// Baskets: P1 scores into the one on P2's side, and vice-versa.
-	BasketForP1 = World->SpawnActor<APPBasket>(BasketClass, O + FVector( 780.f, 0.f, 300.f), FRotator::ZeroRotator, P);
-	BasketForP2 = World->SpawnActor<APPBasket>(BasketClass, O + FVector(-780.f, 0.f, 300.f), FRotator::ZeroRotator, P);
+	// Hoops at the far ends: Team A (left) scores into the RIGHT hoop, Team B into the LEFT.
+	BasketForP1 = World->SpawnActor<APPBasket>(BasketClass, O + FVector( 820.f, 0.f, 300.f), FRotator::ZeroRotator, P);
+	BasketForP2 = World->SpawnActor<APPBasket>(BasketClass, O + FVector(-820.f, 0.f, 300.f), FRotator::ZeroRotator, P);
 	if (BasketForP1) { BasketForP1->SetScorer(P1); }
 	if (BasketForP2) { BasketForP2->SetScorer(P2); }
 

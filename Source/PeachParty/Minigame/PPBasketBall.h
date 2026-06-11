@@ -5,6 +5,7 @@
 #include "PPBasketBall.generated.h"
 
 class UStaticMeshComponent;
+class UPaperSpriteComponent;
 class USceneComponent;
 class APPBasketCharacter;
 
@@ -41,6 +42,10 @@ public:
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
 	UStaticMeshComponent* Mesh;
+
+	/** 2D sprite shown over the physics sphere (Ball_Sprite). */
+	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
+	UPaperSpriteComponent* Sprite;
 
 	/** Replicated so clients can suppress local prediction while it's carried. */
 	UPROPERTY(Replicated)
