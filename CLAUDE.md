@@ -219,5 +219,10 @@ lighting otherwise "competes" with it; only enable on a truly empty level).
   (one per max player) so everyone can sit / ready up.
 - **2026-06-11** — Paper2D enabled; Peach Basket switched to real sprites referencing the user's
   imported textures by path (body + 2 arms layered, ball, hoop). Physics locked to X-Z plane (2D side
-  view), chars face camera, 4 art variants via replicated `SpriteVariant`. User must Create Sprite
-  from each texture (names `<Tex>_Sprite`) and keep their `Content/` on update.
+  view), chars face camera, 4 art variants via replicated `SpriteVariant`.
+- **2026-06-11** — User committed their basket textures to the repo at
+  `Content/PeachParty/Minigames/BasketPeach/Graphics/` (Texture2D `.uasset`, incl. the `PLayer01_Arm`
+  typo). Switched to a **git-clone workflow** (Windows, HTTPS — SSH key only existed on the Linux box).
+  Code now references those TEXTURES by exact path and builds Paper2D sprites from them at runtime
+  (`PPVisual::SpriteFromTexture`, **editor-only** `InitializeSprite` — fine for PIE, needs real sprite
+  assets for a packaged build). No hand-created sprites needed from the user.

@@ -6,6 +6,7 @@
 
 class UStaticMeshComponent;
 class UPaperSpriteComponent;
+class UTexture2D;
 class USceneComponent;
 class APPPlayerState;
 
@@ -36,6 +37,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
 	UPaperSpriteComponent* Sprite;
+
+	UPROPERTY()
+	UTexture2D* HoopTexture = nullptr;
 
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
 	USceneComponent* Mouth;

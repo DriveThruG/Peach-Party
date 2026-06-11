@@ -6,6 +6,7 @@
 
 class UStaticMeshComponent;
 class UPaperSpriteComponent;
+class UTexture2D;
 class USceneComponent;
 class APPBasketCharacter;
 
@@ -43,9 +44,12 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
 	UStaticMeshComponent* Mesh;
 
-	/** 2D sprite shown over the physics sphere (Ball_Sprite). */
+	/** 2D sprite shown over the physics sphere (built from the Ball texture). */
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
 	UPaperSpriteComponent* Sprite;
+
+	UPROPERTY()
+	UTexture2D* BallTexture = nullptr;
 
 	/** Replicated so clients can suppress local prediction while it's carried. */
 	UPROPERTY(Replicated)

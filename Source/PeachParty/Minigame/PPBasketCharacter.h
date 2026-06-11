@@ -7,7 +7,7 @@
 
 class UCapsuleComponent;
 class UPaperSpriteComponent;
-class UPaperSprite;
+class UTexture2D;
 class USceneComponent;
 class APPPlayerState;
 
@@ -94,15 +94,15 @@ protected:
 	UPROPERTY()
 	APPPlayerState* OwningPlayer = nullptr;
 
-	// Sprite assets loaded by path (same on every machine); picked by SpriteVariant.
+	// User textures loaded by path (same on every machine); sprites are built from them at runtime.
 	UPROPERTY()
-	UPaperSprite* BodySprites[4] = { nullptr, nullptr, nullptr, nullptr };
+	UTexture2D* BodyTextures[4] = { nullptr, nullptr, nullptr, nullptr };
 
 	UPROPERTY()
-	UPaperSprite* ArmSprites[4] = { nullptr, nullptr, nullptr, nullptr };
+	UTexture2D* ArmTextures[4] = { nullptr, nullptr, nullptr, nullptr };
 
 	UPROPERTY()
-	UPaperSprite* BackArmSprite = nullptr;
+	UTexture2D* BackArmTexture = nullptr;
 
 	UFUNCTION()
 	void OnRep_Charging();

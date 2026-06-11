@@ -29,18 +29,22 @@ APPBasket::APPBasket()
 	Sprite->SetRelativeRotation(FRotator(0.f, 90.f, 0.f)); // face the camera; tune if edge-on
 	Sprite->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	static ConstructorHelpers::FObjectFinder<UPaperSprite> HoopSpr(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Hoop_Sprite.Hoop_Sprite"));
-	if (HoopSpr.Succeeded())
-	{
-		Sprite->SetSprite(HoopSpr.Object);
-		Ring->SetVisibility(false); // hide the placeholder ring
-	}
+	static ConstructorHelpers::FObjectFinder<UTexture2D> HoopTex(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Hoop.Hoop"));
+	HoopTexture = HoopTex.Object;
 }
 
 void APPBasket::BeginPlay()
 {
 	Super::BeginPlay();
-	PPVisual::Tint(Ring, FLinearColor(0.95f, 0.15f, 0.10f)); // red hoop
+	if (UPaperSprite* S = PPVisual::SpriteFromTexture(this, HoopTexture))
+	{
+		Sprite->SetSprite(S);
+		Ring->SetVisibility(false); // hide the placeholder ring
+	}
+	else
+	{
+		PPVisual::Tint(Ring, FLinearColor(0.95f, 0.15f, 0.10f)); // fallback red hoop
+	}
 }
 
 FVector APPBasket::GetMouthLocation() const

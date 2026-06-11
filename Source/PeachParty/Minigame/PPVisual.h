@@ -4,6 +4,8 @@
 #include "Core/PPTypes.h"
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Engine/Texture2D.h"
+#include "PaperSprite.h"
 
 /**
  * Tiny filler-visual helpers. The minigames are meant to look 2D; until real Paper2D sprite assets
@@ -38,5 +40,27 @@ namespace PPVisual
 		case EPPTeam::TeamB: return FLinearColor(1.00f, 0.20f, 0.15f); // red
 		default:             return FLinearColor(0.60f, 0.60f, 0.60f);
 		}
+	}
+
+	/**
+	 * Build a Paper2D sprite from a Texture2D at runtime (fills the whole texture), so we can show the
+	 * user's imported TEXTURES without them hand-creating sprite assets. Editor-only API: works in PIE /
+	 * Development Editor builds. For a packaged build, create real sprite assets and reference those.
+	 */
+	inline UPaperSprite* SpriteFromTexture(UObject* Outer, UTexture2D* Texture)
+	{
+#if WITH_EDITOR
+		if (!Texture)
+		{
+			return nullptr;
+		}
+		UPaperSprite* Sprite = NewObject<UPaperSprite>(Outer);
+		FSpriteAssetInitParameters Init;
+		Init.SetTextureAndFill(Texture);
+		Sprite->InitializeSprite(Init);
+		return Sprite;
+#else
+		return nullptr;
+#endif
 	}
 }

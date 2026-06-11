@@ -1,7 +1,8 @@
 #include "Minigame/PPBasketCharacter.h"
+#include "Minigame/PPVisual.h"
 #include "Components/CapsuleComponent.h"
 #include "PaperSpriteComponent.h"
-#include "PaperSprite.h"
+#include "Engine/Texture2D.h"
 #include "PhysicsEngine/BodyInstance.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Net/UnrealNetwork.h"
@@ -48,21 +49,21 @@ APPBasketCharacter::APPBasketCharacter()
 	HandPoint->SetupAttachment(Body);
 	HandPoint->SetRelativeLocation(FVector(45.f, 0.f, 70.f));
 
-	// Load the sprite assets by path (user creates them via right-click texture -> Create Sprite;
-	// default sprite name is <Texture>_Sprite in the same folder). Null until they exist.
-	static ConstructorHelpers::FObjectFinder<UPaperSprite> B1(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player01_Body_Sprite.Player01_Body_Sprite"));
-	static ConstructorHelpers::FObjectFinder<UPaperSprite> B2(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player02_Body_Sprite.Player02_Body_Sprite"));
-	static ConstructorHelpers::FObjectFinder<UPaperSprite> B3(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player03_Body_Sprite.Player03_Body_Sprite"));
-	static ConstructorHelpers::FObjectFinder<UPaperSprite> B4(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player04_Body_Sprite.Player04_Body_Sprite"));
-	static ConstructorHelpers::FObjectFinder<UPaperSprite> A1(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/PLayer01_Arm_Sprite.PLayer01_Arm_Sprite"));
-	static ConstructorHelpers::FObjectFinder<UPaperSprite> A2(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player02_Arm_Sprite.Player02_Arm_Sprite"));
-	static ConstructorHelpers::FObjectFinder<UPaperSprite> A3(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player03_Arm_Sprite.Player03_Arm_Sprite"));
-	static ConstructorHelpers::FObjectFinder<UPaperSprite> A4(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player04_Arm_Sprite.Player04_Arm_Sprite"));
-	static ConstructorHelpers::FObjectFinder<UPaperSprite> Back(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Arm_Left_Sprite.Arm_Left_Sprite"));
+	// Reference the user's imported TEXTURES by path (exact filenames, incl. the PLayer01 typo).
+	// Sprites are built from these at runtime in ApplySprites().
+	static ConstructorHelpers::FObjectFinder<UTexture2D> B1(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player01_Body.Player01_Body"));
+	static ConstructorHelpers::FObjectFinder<UTexture2D> B2(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player02_Body.Player02_Body"));
+	static ConstructorHelpers::FObjectFinder<UTexture2D> B3(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player03_Body.Player03_Body"));
+	static ConstructorHelpers::FObjectFinder<UTexture2D> B4(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player04_Body.Player04_Body"));
+	static ConstructorHelpers::FObjectFinder<UTexture2D> A1(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/PLayer01_Arm.PLayer01_Arm"));
+	static ConstructorHelpers::FObjectFinder<UTexture2D> A2(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player02_Arm.Player02_Arm"));
+	static ConstructorHelpers::FObjectFinder<UTexture2D> A3(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player03_Arm.Player03_Arm"));
+	static ConstructorHelpers::FObjectFinder<UTexture2D> A4(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Player04_Arm.Player04_Arm"));
+	static ConstructorHelpers::FObjectFinder<UTexture2D> Back(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Arm_Left.Arm_Left"));
 
-	BodySprites[0] = B1.Object; BodySprites[1] = B2.Object; BodySprites[2] = B3.Object; BodySprites[3] = B4.Object;
-	ArmSprites[0]  = A1.Object; ArmSprites[1]  = A2.Object; ArmSprites[2]  = A3.Object; ArmSprites[3]  = A4.Object;
-	BackArmSprite  = Back.Object;
+	BodyTextures[0] = B1.Object; BodyTextures[1] = B2.Object; BodyTextures[2] = B3.Object; BodyTextures[3] = B4.Object;
+	ArmTextures[0]  = A1.Object; ArmTextures[1]  = A2.Object; ArmTextures[2]  = A3.Object; ArmTextures[3]  = A4.Object;
+	BackArmTexture  = Back.Object;
 }
 
 void APPBasketCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -167,9 +168,9 @@ FVector APPBasketCharacter::GetThrowDirection() const
 void APPBasketCharacter::ApplySprites()
 {
 	const int32 Idx = FMath::Clamp(SpriteVariant - 1, 0, 3);
-	if (SpriteBody)  { SpriteBody->SetSprite(BodySprites[Idx]); }
-	if (SpriteFront) { SpriteFront->SetSprite(ArmSprites[Idx]); }
-	if (SpriteBack)  { SpriteBack->SetSprite(BackArmSprite); }
+	if (SpriteBody)  { SpriteBody->SetSprite(PPVisual::SpriteFromTexture(this, BodyTextures[Idx])); }
+	if (SpriteFront) { SpriteFront->SetSprite(PPVisual::SpriteFromTexture(this, ArmTextures[Idx])); }
+	if (SpriteBack)  { SpriteBack->SetSprite(PPVisual::SpriteFromTexture(this, BackArmTexture)); }
 }
 
 void APPBasketCharacter::OnRep_Charging()

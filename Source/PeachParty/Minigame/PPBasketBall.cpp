@@ -33,18 +33,22 @@ APPBasketBall::APPBasketBall()
 	Sprite->SetRelativeRotation(FRotator(0.f, 90.f, 0.f)); // face the camera; tune if edge-on
 	Sprite->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	static ConstructorHelpers::FObjectFinder<UPaperSprite> BallSpr(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Ball_Sprite.Ball_Sprite"));
-	if (BallSpr.Succeeded())
-	{
-		Sprite->SetSprite(BallSpr.Object);
-		Mesh->SetVisibility(false); // hide the placeholder sphere; keep its collision
-	}
+	static ConstructorHelpers::FObjectFinder<UTexture2D> BallTex(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Ball.Ball"));
+	BallTexture = BallTex.Object;
 }
 
 void APPBasketBall::BeginPlay()
 {
 	Super::BeginPlay();
-	PPVisual::Tint(Mesh, FLinearColor(1.0f, 0.55f, 0.05f)); // basketball orange
+	if (UPaperSprite* S = PPVisual::SpriteFromTexture(this, BallTexture))
+	{
+		Sprite->SetSprite(S);
+		Mesh->SetVisibility(false); // hide the placeholder sphere; keep its collision
+	}
+	else
+	{
+		PPVisual::Tint(Mesh, FLinearColor(1.0f, 0.55f, 0.05f)); // fallback orange sphere
+	}
 }
 
 void APPBasketBall::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
