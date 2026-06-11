@@ -59,6 +59,13 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
 	float ArmRaiseRateDegPerSec = 120.f;
 
+	/** Self-righting (weeble) spring: torque about the Y axis to return to upright. */
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
+	float UprightStrength = 22.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
+	float UprightDamping = 6.f;
+
 	/** How the sprites face the camera. 0 = Paper2D default (faces -Y, toward the side camera). */
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
 	FRotator SpriteFacing = FRotator(0.f, 0.f, 0.f);

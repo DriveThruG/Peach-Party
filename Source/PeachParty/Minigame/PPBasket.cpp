@@ -4,6 +4,7 @@
 #include "PaperSpriteComponent.h"
 #include "PaperSprite.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Net/UnrealNetwork.h"
 
 APPBasket::APPBasket()
 {
@@ -33,6 +34,12 @@ APPBasket::APPBasket()
 	HoopTexture = HoopTex.Object;
 }
 
+void APPBasket::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(APPBasket, bFlipX);
+}
+
 void APPBasket::BeginPlay()
 {
 	Super::BeginPlay();
@@ -44,6 +51,29 @@ void APPBasket::BeginPlay()
 	else
 	{
 		PPVisual::Tint(Ring, FLinearColor(0.95f, 0.15f, 0.10f)); // fallback red hoop
+	}
+	ApplyFlip();
+}
+
+void APPBasket::SetFlipped(bool bNewFlipped)
+{
+	if (HasAuthority() && bFlipX != bNewFlipped)
+	{
+		bFlipX = bNewFlipped;
+		ApplyFlip();   // host mirror
+	}
+}
+
+void APPBasket::OnRep_Flip()
+{
+	ApplyFlip();
+}
+
+void APPBasket::ApplyFlip()
+{
+	if (Sprite)
+	{
+		Sprite->SetRelativeScale3D(FVector(bFlipX ? -1.f : 1.f, 1.f, 1.f)); // mirror horizontally
 	}
 }
 

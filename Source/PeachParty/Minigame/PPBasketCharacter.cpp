@@ -20,7 +20,7 @@ APPBasketCharacter::APPBasketCharacter()
 	Body->InitCapsuleSize(34.f, 88.f);
 	Body->SetCollisionProfileName(TEXT("PhysicsActor"));
 	Body->SetSimulatePhysics(true);
-	Body->SetCenterOfMass(FVector(0.f, 0.f, 50.f)); // tippy on purpose
+	Body->SetCenterOfMass(FVector(0.f, 0.f, -70.f)); // at the feet: pivots + self-rights around the feet
 	Body->SetAngularDamping(0.5f);
 	Body->SetLinearDamping(0.1f);
 	// Lock to the X-Z plane: a true 2D side-view (move in X/Z, only roll about Y to wobble/tip).
@@ -79,9 +79,19 @@ void APPBasketCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	if (HasAuthority() && bCharging)
+	if (HasAuthority())
 	{
-		ArmAngleDeg = FMath::Min(MaxArmAngleDeg, ArmAngleDeg + ArmRaiseRateDegPerSec * DeltaSeconds);
+		if (bCharging)
+		{
+			ArmAngleDeg = FMath::Min(MaxArmAngleDeg, ArmAngleDeg + ArmRaiseRateDegPerSec * DeltaSeconds);
+		}
+
+		// Weeble self-righting: spring the body back to upright (rotation about Y, the 2D plane).
+		const FVector Up = GetActorUpVector();
+		const float Lean = FMath::Atan2(Up.X, Up.Z);                 // 0 = upright; + = leaning toward +X
+		const float AngVelY = Body->GetPhysicsAngularVelocityInRadians().Y;
+		const float Torque = -UprightStrength * Lean - UprightDamping * AngVelY;
+		Body->AddTorqueInRadians(FVector(0.f, Torque, 0.f), NAME_None, /*bAccelChange=*/true);
 	}
 
 	// Ease the visual arm raise everywhere (from replicated bCharging). Pitch the shoulder pivot.

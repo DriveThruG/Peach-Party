@@ -23,10 +23,14 @@ public:
 	APPBasket();
 
 	virtual void BeginPlay() override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	/** SERVER. The player who gets the point when the ball enters this basket. */
 	void SetScorer(APPPlayerState* InScorer) { Scorer = InScorer; }
 	APPPlayerState* GetScorer() const { return Scorer; }
+
+	/** SERVER. Mirror the hoop sprite horizontally (the left hoop must point right). */
+	void SetFlipped(bool bNewFlipped);
 
 	/** Where the ball must arrive to score (the hoop mouth). */
 	FVector GetMouthLocation() const;
@@ -46,4 +50,12 @@ protected:
 
 	UPROPERTY()
 	APPPlayerState* Scorer = nullptr;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Flip)
+	bool bFlipX = false;
+
+	UFUNCTION()
+	void OnRep_Flip();
+
+	void ApplyFlip();
 };

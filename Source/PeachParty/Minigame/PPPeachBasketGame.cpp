@@ -18,8 +18,8 @@ APPPeachBasketGame::APPPeachBasketGame()
 	MinigameType = EMinigameType::PeachBasket;
 	Duration = 45.f; // fallback cap; usually ends earlier on TargetScore
 
-	GameCamera->SetRelativeLocation(FVector(0.f, -1500.f, 600.f));
-	GameCamera->SetRelativeRotation(FRotator(-18.f, 90.f, 0.f));
+	GameCamera->SetRelativeLocation(FVector(0.f, -850.f, 200.f)); // closer + lower so the background fills the screen
+	GameCamera->SetRelativeRotation(FRotator(-3.f, 90.f, 0.f));   // near head-on
 
 	BallClass = APPBasketBall::StaticClass();
 	CharacterClass = APPBasketCharacter::StaticClass();
@@ -118,11 +118,11 @@ void APPPeachBasketGame::SpawnPlay()
 	Player2Chars.Add(SpawnChar(FVector( 220.f, 0.f, 120.f), P2, EPPTeam::TeamB, 3));
 	Player2Chars.Add(SpawnChar(FVector( 420.f, 0.f, 120.f), P2, EPPTeam::TeamB, 4));
 
-	// Hoops at the far ends: Team A (left) scores into the RIGHT hoop, Team B into the LEFT.
-	BasketForP1 = World->SpawnActor<APPBasket>(BasketClass, O + FVector( 820.f, 0.f, 300.f), FRotator::ZeroRotator, P);
-	BasketForP2 = World->SpawnActor<APPBasket>(BasketClass, O + FVector(-820.f, 0.f, 300.f), FRotator::ZeroRotator, P);
+	// Hoops nearer the centre so they sit inside the background. Team A (left) scores into the RIGHT.
+	BasketForP1 = World->SpawnActor<APPBasket>(BasketClass, O + FVector( 650.f, 0.f, 320.f), FRotator::ZeroRotator, P);
+	BasketForP2 = World->SpawnActor<APPBasket>(BasketClass, O + FVector(-650.f, 0.f, 320.f), FRotator::ZeroRotator, P);
 	if (BasketForP1) { BasketForP1->SetScorer(P1); }
-	if (BasketForP2) { BasketForP2->SetScorer(P2); }
+	if (BasketForP2) { BasketForP2->SetScorer(P2); BasketForP2->SetFlipped(true); } // left hoop mirrored to point right
 
 	Ball = World->SpawnActor<APPBasketBall>(BallClass, O + FVector(0.f, 0.f, 160.f), FRotator::ZeroRotator, P);
 
