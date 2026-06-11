@@ -22,7 +22,7 @@ class APPObjectiveRoom;
  *
  * Reward/Final remain stubs (core-first): they set the phase + arm a timer.
  */
-UCLASS()
+UCLASS(Config=Game)
 class PEACHPARTY_API APPGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
@@ -109,8 +109,9 @@ public:
 
 	// ---- Debug / fast iteration ----
 	/** PIE shortcut: skip the whole lobby/walk-to-PC/ready dance and drop STRAIGHT into a Peach Basket
-	 *  match as soon as >=2 players have joined. Set false for the normal flow. Great for visual tuning. */
-	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Debug")
+	 *  match as soon as >=2 players have joined. Set false for the normal flow. Great for visual tuning.
+	 *  `config` so it can be flipped in Config/DefaultGame.ini without a Blueprint GameMode. */
+	UPROPERTY(EditDefaultsOnly, Config, Category = "PeachParty|Debug")
 	bool bDebugSkipToBasket = false;
 
 protected:
