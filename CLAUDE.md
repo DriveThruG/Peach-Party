@@ -257,6 +257,14 @@ lighting otherwise "competes" with it; only enable on a truly empty level).
   gated switching), wetness/slip + respawn, frontline 3-room objective progression (`APPObjectiveRoom`
   + GameMode front-shift + per-room timer reset), water-gun projectile combat (team-aware wetness).
   New `Final/` folder. Object/gravity-gun + refill stations designed but not yet built.
+- **2026-06-11** — Combat spec match: gravity-object grab/throw (`APPGrabbableObject`, RMB grab/drop,
+  LMB throw, impact-speed→wetness + knockback, friendly-safe), proximity refill stations
+  (`APPRefillStation`, Runner refills faster, no manual reload), fuller slip (DisableMovement +
+  DisableInput + random launch impulse). Character: `HoldPoint`, replicated `bIsHolding` (blocks fire),
+  `AddAmmo` (clamped to class capacity), `OnGrab/ServerGrabOrDrop/ServerThrow`. Water projectile now
+  team-coloured (`InstigatorTeam` replicated → `OnRep_Team` tint) with a `MulticastImpact`/`BP_OnImpact`
+  team-coloured splash hook. `Grab` (RMB) added to `DefaultInput.ini`. Place `APPRefillStation` and
+  `APPGrabbableObject` actors in the final arena level. Unverified — no local compiler.
 - **2026-06-11** — Basket arena: hid the floor/walls (collision-only, `SetVisibility(false)`) so the
   visible "box" is gone; added a full-screen `Background` Paper2D sprite (from `Background.uasset`)
   behind the action (`BackgroundOffset`/`BackgroundScale` tunable). Aiming for the reference court look.

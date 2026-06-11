@@ -8,7 +8,9 @@
 
 class UCameraComponent;
 class UStaticMeshComponent;
+class USceneComponent;
 class APPWaterProjectile;
+class APPGrabbableObject;
 class IPPInteractable;
 
 /**
@@ -41,6 +43,11 @@ public:
 
 	/** SERVER. Called by a water projectile that hit this (enemy) player. */
 	void ApplyWetness(float Amount, EPPTeam InstigatorTeam);
+
+	/** SERVER. Refill stations top up water ammo (clamped to the class capacity). */
+	void AddAmmo(int32 Amount);
+
+	bool IsHoldingObject() const { return bIsHolding; }
 
 protected:
 	// ---- Movement / look ----
@@ -87,10 +94,19 @@ protected:
 	/** Apply the player's class stats (movement speed, ammo). Called on spawn. */
 	void ApplyClassStats();
 
-	void OnFirePressed();
+	void OnFirePressed();   // LMB: shoot, or throw the held object
+	void OnGrabPressed();   // RMB: grab an object, or drop the held one
 
 	UFUNCTION(Server, Reliable)
 	void ServerFire();
+
+	/** RMB: grab a nearby object via a trace, or drop the one we're holding. */
+	UFUNCTION(Server, Reliable)
+	void ServerGrabOrDrop();
+
+	/** LMB while holding: throw the object along the aim. */
+	UFUNCTION(Server, Reliable)
+	void ServerThrow();
 
 	/** Played on all clients when this player slips (wetness 100): cosmetic + lock movement. */
 	UFUNCTION(NetMulticast, Reliable)
@@ -104,6 +120,22 @@ protected:
 
 	int32 CurrentAmmo = 100;
 	float LastFireServerTime = -100.f;
+
+	// ---- Gravity object (grab/throw) ----
+	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Object")
+	USceneComponent* HoldPoint; // where a grabbed object floats in front of the player
+
+	UPROPERTY(Replicated)
+	bool bIsHolding = false; // can't shoot while true
+
+	UPROPERTY()
+	APPGrabbableObject* HeldObject = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Object")
+	float GrabDistance = 350.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Object")
+	float ThrowImpulse = 1600.f;
 
 	/** True if the local player is currently in a 1v1 match (reads replicated PlayerState). */
 	bool IsInMinigame() const;

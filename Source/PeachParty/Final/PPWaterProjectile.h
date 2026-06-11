@@ -24,16 +24,31 @@ public:
 	/** SERVER. Launch with a velocity, the shooter's team and the class wetness-per-hit. */
 	void Launch(const FVector& Velocity, EPPTeam InInstigatorTeam, float InWetness, AActor* IgnoredShooter);
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 protected:
 	UFUNCTION()
 	void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
 		FVector NormalImpulse, const FHitResult& Hit);
 
+	/** Tint the water blob to the shooter's team colour (runs on every client). */
+	UFUNCTION()
+	void OnRep_Team();
+
+	/** Cosmetic team-coloured splash on impact (runs on all clients). */
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastImpact(FVector Location);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "PeachParty|Combat")
+	void BP_OnImpact(FVector Location, EPPTeam Team);
+
 	UPROPERTY(VisibleAnywhere) USphereComponent* Collision;
 	UPROPERTY(VisibleAnywhere) UStaticMeshComponent* Mesh;
 	UPROPERTY(VisibleAnywhere) UProjectileMovementComponent* Movement;
 
+	UPROPERTY(ReplicatedUsing = OnRep_Team)
 	EPPTeam InstigatorTeam = EPPTeam::None;
+
 	float WetnessAmount = 8.f;
 	bool bImpacted = false;
 };

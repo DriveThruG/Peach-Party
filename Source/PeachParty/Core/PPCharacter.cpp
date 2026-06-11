@@ -4,6 +4,7 @@
 #include "Core/PPGameState.h"
 #include "Core/PPGameMode.h"
 #include "Final/PPWaterProjectile.h"
+#include "Final/PPGrabbableObject.h"
 #include "Interaction/PPInteractable.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -54,6 +55,10 @@ APPCharacter::APPCharacter()
 	}
 
 	WaterProjectileClass = APPWaterProjectile::StaticClass(); // works with no BP setup
+
+	HoldPoint = CreateDefaultSubobject<USceneComponent>(TEXT("HoldPoint"));
+	HoldPoint->SetupAttachment(FirstPersonCamera);
+	HoldPoint->SetRelativeLocation(FVector(160.f, 0.f, -20.f)); // floats in front of the view
 }
 
 void APPCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -61,6 +66,7 @@ void APPCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	// Owner sets sprint locally for responsiveness; others get it replicated.
 	DOREPLIFETIME_CONDITION(APPCharacter, bIsSprinting, COND_SkipOwner);
+	DOREPLIFETIME(APPCharacter, bIsHolding);
 }
 
 void APPCharacter::BeginPlay()
@@ -98,6 +104,7 @@ void APPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &APPCharacter::OnCrouchReleased);
 
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &APPCharacter::OnFirePressed);
+	PlayerInputComponent->BindAction("Grab", IE_Pressed, this, &APPCharacter::OnGrabPressed);
 	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &APPCharacter::OnInteractPressed);
 	PlayerInputComponent->BindAction("SpectateNext", IE_Pressed, this, &APPCharacter::OnSpectateNext);
 	PlayerInputComponent->BindAction("SpectatePrev", IE_Pressed, this, &APPCharacter::OnSpectatePrev);
@@ -285,13 +292,23 @@ void APPCharacter::ApplyClassStats()
 
 void APPCharacter::OnFirePressed()
 {
-	// Water guns exist ONLY in the final combat phase (not in the hub / minigames).
+	// Combat (gun + objects) exists ONLY in the final phase.
 	const APPGameState* GS = GetWorld() ? GetWorld()->GetGameState<APPGameState>() : nullptr;
 	if (IsInMinigame() || !GS || GS->GetCurrentPhase() != EMatchPhase::Final)
 	{
 		return;
 	}
-	ServerFire();
+	if (bIsHolding) { ServerThrow(); } else { ServerFire(); } // LMB throws while holding, else shoots
+}
+
+void APPCharacter::OnGrabPressed()
+{
+	const APPGameState* GS = GetWorld() ? GetWorld()->GetGameState<APPGameState>() : nullptr;
+	if (IsInMinigame() || !GS || GS->GetCurrentPhase() != EMatchPhase::Final)
+	{
+		return;
+	}
+	ServerGrabOrDrop();
 }
 
 void APPCharacter::ServerFire_Implementation()
@@ -299,8 +316,8 @@ void APPCharacter::ServerFire_Implementation()
 	APPPlayerState* PS = GetPlayerState<APPPlayerState>();
 	UWorld* World = GetWorld();
 	const APPGameState* GS = World ? World->GetGameState<APPGameState>() : nullptr;
-	if (!PS || PS->IsSlipping() || !World || !WaterProjectileClass
-		|| !GS || GS->GetCurrentPhase() != EMatchPhase::Final) // authoritative phase gate
+	if (!PS || PS->IsSlipping() || bIsHolding || !World || !WaterProjectileClass
+		|| !GS || GS->GetCurrentPhase() != EMatchPhase::Final) // can't shoot while holding an object
 	{
 		return;
 	}
@@ -343,6 +360,8 @@ void APPCharacter::ApplyWetness(float Amount, EPPTeam InstigatorTeam)
 	}
 	if (PS->AddWetness(Amount)) // returns true when it just hit 100
 	{
+		// Slip impulse (server-authoritative, replicates via movement).
+		LaunchCharacter(FVector(FMath::FRandRange(-300.f, 300.f), FMath::FRandRange(-300.f, 300.f), 500.f), true, true);
 		MulticastSlip();
 		if (APPGameMode* GM = GetWorld()->GetAuthGameMode<APPGameMode>())
 		{
@@ -353,13 +372,75 @@ void APPCharacter::ApplyWetness(float Amount, EPPTeam InstigatorTeam)
 
 void APPCharacter::MulticastSlip_Implementation()
 {
-	// Lock movement; the new pawn after respawn restores it. (Real ragdoll needs a skeletal mesh +
-	// physics asset — drive that from BP_OnSlip once a character mesh exists.)
+	// Lock movement + input; the fresh pawn after respawn restores both. (A real ragdoll needs a
+	// skeletal mesh + physics asset — drive that from BP_OnSlip once a character mesh exists.)
 	if (GetCharacterMovement())
 	{
 		GetCharacterMovement()->DisableMovement();
 	}
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		DisableInput(PC);
+	}
 	BP_OnSlip();
+}
+
+void APPCharacter::AddAmmo(int32 Amount)
+{
+	if (!HasAuthority() || Amount <= 0)
+	{
+		return;
+	}
+	CurrentAmmo = FMath::Min(CurrentAmmo + Amount, GetEffectiveStats().AmmoCapacity);
+}
+
+void APPCharacter::ServerGrabOrDrop_Implementation()
+{
+	const APPPlayerState* PS = GetPlayerState<APPPlayerState>();
+	if (PS && PS->IsSlipping())
+	{
+		return;
+	}
+
+	if (bIsHolding)
+	{
+		if (HeldObject) { HeldObject->Drop(); }
+		HeldObject = nullptr;
+		bIsHolding = false;
+		return;
+	}
+
+	// Trace forward for a grabbable object.
+	const FVector Start = GetActorLocation() + FVector(0.f, 0.f, 50.f);
+	const FVector End = Start + GetBaseAimRotation().Vector() * GrabDistance;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+	FHitResult Hit;
+	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
+	{
+		if (APPGrabbableObject* Obj = Cast<APPGrabbableObject>(Hit.GetActor()))
+		{
+			if (!Obj->IsHeld())
+			{
+				Obj->Grab(this, HoldPoint);
+				HeldObject = Obj;
+				bIsHolding = true;
+			}
+		}
+	}
+}
+
+void APPCharacter::ServerThrow_Implementation()
+{
+	if (!bIsHolding || !HeldObject)
+	{
+		return;
+	}
+	const APPPlayerState* PS = GetPlayerState<APPPlayerState>();
+	const FVector Dir = GetBaseAimRotation().Vector();
+	HeldObject->ThrowWithImpulse(Dir * ThrowImpulse, PS ? PS->GetTeam() : EPPTeam::None);
+	HeldObject = nullptr;
+	bIsHolding = false;
 }
 
 void APPCharacter::OnSpectateNext()

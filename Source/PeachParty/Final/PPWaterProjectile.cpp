@@ -1,9 +1,11 @@
 #include "Final/PPWaterProjectile.h"
 #include "Core/PPCharacter.h"
 #include "Core/PPPlayerState.h"
+#include "Minigame/PPVisual.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
 
 APPWaterProjectile::APPWaterProjectile()
@@ -41,6 +43,7 @@ void APPWaterProjectile::Launch(const FVector& Velocity, EPPTeam InInstigatorTea
 	}
 	InstigatorTeam = InInstigatorTeam;
 	WetnessAmount = InWetness;
+	OnRep_Team(); // tint on the server/listen host too (OnRep only fires on remote clients)
 	if (IgnoredShooter)
 	{
 		Collision->IgnoreActorWhenMoving(IgnoredShooter, true);
@@ -48,6 +51,22 @@ void APPWaterProjectile::Launch(const FVector& Velocity, EPPTeam InInstigatorTea
 	Collision->OnComponentHit.AddDynamic(this, &APPWaterProjectile::OnHit);
 	Movement->Velocity = Velocity;
 	Movement->Activate();
+}
+
+void APPWaterProjectile::OnRep_Team()
+{
+	PPVisual::Tint(Mesh, PPVisual::TeamColor(InstigatorTeam));
+}
+
+void APPWaterProjectile::MulticastImpact_Implementation(FVector Location)
+{
+	BP_OnImpact(Location, InstigatorTeam);
+}
+
+void APPWaterProjectile::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(APPWaterProjectile, InstigatorTeam);
 }
 
 void APPWaterProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
@@ -68,5 +87,11 @@ void APPWaterProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
 			HitChar->ApplyWetness(WetnessAmount, InstigatorTeam);
 		}
 	}
-	Destroy();
+
+	// Team-coloured splash on all clients, then despawn (short delay so the multicast lands).
+	MulticastImpact(GetActorLocation());
+	Movement->Deactivate();
+	Collision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Mesh->SetVisibility(false);
+	SetLifeSpan(0.1f);
 }
