@@ -13,6 +13,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Engine/World.h"
+#include "Engine/GameViewportClient.h" // RemoveAllViewportWidgets (clear leftover menu UI on lobby entry)
 #include "Net/UnrealNetwork.h"
 
 APPCharacter::APPCharacter()
@@ -85,6 +86,12 @@ void APPCharacter::PawnClientRestart()
 	{
 		if (PC->IsLocalController())
 		{
+			// Viewport widgets survive level travel (they belong to the LocalPlayer). Clear leftover menu
+			// widgets so they don't sit on top of the lobby (looks like "back at the start screen").
+			if (UGameViewportClient* VP = GetWorld() ? GetWorld()->GetGameViewport() : nullptr)
+			{
+				VP->RemoveAllViewportWidgets();
+			}
 			PC->SetInputMode(FInputModeGameOnly());
 			PC->bShowMouseCursor = false;
 		}

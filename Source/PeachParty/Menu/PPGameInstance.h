@@ -53,13 +53,19 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "PeachParty|Session") FPPSessionEvent OnFindComplete;
 	UPROPERTY(BlueprintAssignable, Category = "PeachParty|Session") FPPSessionEvent OnJoinComplete;
 
+	/** Full package path is safest for ServerTravel (a short name can be ambiguous / unresolved). */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "PeachParty|Session")
-	FString LobbyMapName = TEXT("PeachPartyHub");
+	FString LobbyMapName = TEXT("/Game/PeachParty/Maps/PeachPartyHub");
 
 protected:
 	void HandleCreateComplete(FName SessionName, bool bWasSuccessful);
 	void HandleFindComplete(bool bWasSuccessful);
 	void HandleJoinComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
+
+	/** Destroy-then-create: a stale session must finish destroying before CreateSession, or NULL races
+	 *  ("already in session") and hosting a second time fails. We chain create onto destroy-complete. */
+	void CreateSessionNow();
+	void HandleDestroyForHost(FName SessionName, bool bWasSuccessful);
 
 	IOnlineSessionPtr GetSession() const;
 
@@ -67,4 +73,10 @@ protected:
 	FDelegateHandle CreateHandle;
 	FDelegateHandle FindHandle;
 	FDelegateHandle JoinHandle;
+	FDelegateHandle DestroyHandle;
+
+	// Host params remembered while we wait for the old session to destroy.
+	FString PendingServerName;
+	int32   PendingMaxPlayers = 4;
+	bool    bPendingLAN = true;
 };

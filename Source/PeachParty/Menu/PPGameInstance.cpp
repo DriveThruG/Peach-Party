@@ -19,24 +19,55 @@ void UPPGameInstance::HostGame(const FString& ServerName, int32 MaxPlayers, bool
 	if (!Session.IsValid())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[PeachParty] No session interface (Online Subsystem missing)."));
+		OnCreateComplete.Broadcast(false);
 		return;
 	}
 
-	// If a stale session exists, destroy it first to avoid "already in session" errors.
+	// Remember the params; CreateSessionNow() uses them (possibly after a destroy completes).
+	PendingServerName = ServerName;
+	PendingMaxPlayers = MaxPlayers;
+	bPendingLAN = bLAN;
+
+	// If a stale session exists, destroy it and create ONLY when that finishes (NULL races otherwise).
 	if (Session->GetNamedSession(NAME_GameSession))
 	{
+		UE_LOG(LogTemp, Log, TEXT("[PeachParty] Existing session found — destroying before re-host."));
+		DestroyHandle = Session->AddOnDestroySessionCompleteDelegate_Handle(
+			FOnDestroySessionCompleteDelegate::CreateUObject(this, &UPPGameInstance::HandleDestroyForHost));
 		Session->DestroySession(NAME_GameSession);
+		return;
+	}
+
+	CreateSessionNow();
+}
+
+void UPPGameInstance::HandleDestroyForHost(FName SessionName, bool bWasSuccessful)
+{
+	if (IOnlineSessionPtr Session = GetSession())
+	{
+		Session->ClearOnDestroySessionCompleteDelegate_Handle(DestroyHandle);
+	}
+	CreateSessionNow(); // now the old session is gone — safe to create
+}
+
+void UPPGameInstance::CreateSessionNow()
+{
+	IOnlineSessionPtr Session = GetSession();
+	if (!Session.IsValid())
+	{
+		OnCreateComplete.Broadcast(false);
+		return;
 	}
 
 	FOnlineSessionSettings Settings;
-	Settings.bIsLANMatch = bLAN;
-	Settings.NumPublicConnections = FMath::Clamp(MaxPlayers, 2, 8);
+	Settings.bIsLANMatch = bPendingLAN;
+	Settings.NumPublicConnections = FMath::Clamp(PendingMaxPlayers, 2, 8);
 	Settings.bShouldAdvertise = true;          // show up in searches
 	Settings.bAllowJoinInProgress = true;
-	Settings.bUsesPresence = !bLAN;            // presence is for online; LAN doesn't need it
-	Settings.bAllowJoinViaPresence = !bLAN;
-	Settings.bUseLobbiesIfAvailable = !bLAN;
-	Settings.Set(SETTING_SERVERNAME, ServerName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	Settings.bUsesPresence = !bPendingLAN;     // presence is for online; LAN doesn't need it
+	Settings.bAllowJoinViaPresence = !bPendingLAN;
+	Settings.bUseLobbiesIfAvailable = !bPendingLAN;
+	Settings.Set(SETTING_SERVERNAME, PendingServerName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 	CreateHandle = Session->AddOnCreateSessionCompleteDelegate_Handle(
 		FOnCreateSessionCompleteDelegate::CreateUObject(this, &UPPGameInstance::HandleCreateComplete));
@@ -54,7 +85,9 @@ void UPPGameInstance::HandleCreateComplete(FName SessionName, bool bWasSuccessfu
 	if (bWasSuccessful && GetWorld())
 	{
 		// Listen-server travel to the lobby (everyone who joins follows the host here).
-		GetWorld()->ServerTravel(LobbyMapName + TEXT("?listen"));
+		const FString URL = LobbyMapName + TEXT("?listen");
+		UE_LOG(LogTemp, Log, TEXT("[PeachParty] Session created — ServerTravel to %s"), *URL);
+		GetWorld()->ServerTravel(URL);
 	}
 	else if (!bWasSuccessful)
 	{

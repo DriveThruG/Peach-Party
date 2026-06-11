@@ -292,6 +292,13 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-11** — Menu flow bugfixes (host→stuck on menu, join→black, host-twice→black): (1) viewport
+  widgets survive level travel, so `APPCharacter::PawnClientRestart` now `RemoveAllViewportWidgets()` on
+  lobby entry (clears leftover menu UI). (2) `UPPGameInstance::HostGame` now destroys a stale session
+  and chains `CreateSession` onto destroy-complete (`HandleDestroyForHost`/`CreateSessionNow`) — fixes
+  the NULL "already in session" race on repeated hosting; also broadcasts `OnCreateComplete(false)` on
+  early-out. (3) `LobbyMapName` → full path `/Game/PeachParty/Maps/PeachPartyHub` (short name was
+  ambiguous). (4) Cleaned stray map lines (wrong path) out of `DefaultEngine.ini [OnlineSubsystem]`.
 - **2026-06-11** — Menu/lobby input: new `Menu/PPMenuGameMode` (no pawn, no hub, plain PC) for the
   MainMenu map — user must set it as the MainMenu level's **GameMode Override** (World Settings). And
   `APPCharacter::PawnClientRestart` forces Game-Only input + hides the cursor on the owning client;
