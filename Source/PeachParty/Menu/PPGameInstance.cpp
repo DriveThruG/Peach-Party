@@ -110,6 +110,7 @@ void UPPGameInstance::FindGames(bool bLAN)
 	// presence is never used (bUsesPresence=false on host). The SEARCH_PRESENCE constant also moved
 	// between headers across UE versions, so depending on it only adds a fragile build dependency.
 
+	UE_LOG(LogTemp, Log, TEXT("[PeachParty] FindGames: searching (LAN=%d)…"), bLAN ? 1 : 0);
 	FindHandle = Session->AddOnFindSessionsCompleteDelegate_Handle(
 		FOnFindSessionsCompleteDelegate::CreateUObject(this, &UPPGameInstance::HandleFindComplete));
 	Session->FindSessions(0, SearchSettings.ToSharedRef());
@@ -123,6 +124,9 @@ void UPPGameInstance::HandleFindComplete(bool bWasSuccessful)
 	}
 
 	ServerList.Reset();
+	const int32 Found = (bWasSuccessful && SearchSettings.IsValid()) ? SearchSettings->SearchResults.Num() : 0;
+	UE_LOG(LogTemp, Log, TEXT("[PeachParty] FindGames complete: success=%d, found=%d session(s)."),
+		bWasSuccessful ? 1 : 0, Found);
 	if (bWasSuccessful && SearchSettings.IsValid())
 	{
 		for (int32 i = 0; i < SearchSettings->SearchResults.Num(); ++i)
