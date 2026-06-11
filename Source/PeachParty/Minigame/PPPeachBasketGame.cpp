@@ -50,14 +50,45 @@ APPPeachBasketGame::APPPeachBasketGame()
 void APPPeachBasketGame::BeginPlay()
 {
 	Super::BeginPlay();
-	if (Background)
+
+	if (!Background || !BackgroundTexture)
 	{
-		Background->SetRelativeLocation(BackgroundOffset);
-		Background->SetRelativeScale3D(FVector(BackgroundScale));
-		if (UPaperSprite* S = PPVisual::SpriteFromTexture(this, BackgroundTexture))
+		return;
+	}
+
+	Background->SetRelativeLocation(BackgroundOffset);
+
+	if (UPaperSprite* S = PPVisual::SpriteFromTexture(this, BackgroundTexture))
+	{
+		Background->SetSprite(S);
+	}
+
+	FVector2D ViewportSize;
+	if (GEngine && GEngine->GameViewport)
+	{
+		GEngine->GameViewport->GetViewportSize(ViewportSize);
+
+		const float ScreenAspect =
+			ViewportSize.X / FMath::Max(1.f, ViewportSize.Y);
+
+		const float TextureAspect =
+			(float)BackgroundTexture->GetSizeX() /
+			(float)BackgroundTexture->GetSizeY();
+
+		float ScaleX = BackgroundScale;
+		float ScaleZ = BackgroundScale;
+
+		if (ScreenAspect > TextureAspect)
 		{
-			Background->SetSprite(S);
+			ScaleX *= ScreenAspect / TextureAspect;
 		}
+		else
+		{
+			ScaleZ *= TextureAspect / ScreenAspect;
+		}
+
+		Background->SetRelativeScale3D(
+			FVector(ScaleX, BackgroundScale, ScaleZ));
 	}
 }
 
@@ -128,8 +159,8 @@ void APPPeachBasketGame::SpawnPlay()
 	// Hoops pulled IN toward the court and DOWN (user request 2026-06-11) so they sit over the field
 	// instead of floating at the screen corners. Both face inward: the texture opens RIGHT, so the LEFT
 	// hoop stays default and the RIGHT one mirrors. (±X = how far out, Z = rim height — tune by eye.)
-	BasketForP1 = World->SpawnActor<APPBasket>(BasketClass, O + FVector( 330.f, 0.f, 150.f), FRotator::ZeroRotator, P);
-	BasketForP2 = World->SpawnActor<APPBasket>(BasketClass, O + FVector(-330.f, 0.f, 150.f), FRotator::ZeroRotator, P);
+	BasketForP1 = World->SpawnActor<APPBasket>(BasketClass, O + FVector( 250.f, 0.f, 50.f), FRotator::ZeroRotator, P);
+	BasketForP2 = World->SpawnActor<APPBasket>(BasketClass, O + FVector(-250.f, 0.f, 50.f), FRotator::ZeroRotator, P);
 	if (BasketForP1) { BasketForP1->SetScorer(P1); BasketForP1->SetFlipped(true); } // right hoop mirrored to face the court
 	if (BasketForP2) { BasketForP2->SetScorer(P2); }
 
