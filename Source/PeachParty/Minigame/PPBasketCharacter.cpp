@@ -32,19 +32,21 @@ APPBasketCharacter::APPBasketCharacter()
 	SpriteBody->SetRelativeLocationAndRotation(FVector(0.f, 0.f, 0.f), SpriteFacing);
 	SpriteBody->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	// Pivot at the SHOULDER (arms rotate from here); the arm sprites hang down below it.
+	// Pivot at the SHOULDER (arms rotate from here); the arm sprites hang straight DOWN from it so the
+	// top of each arm sits right at the shoulder joint (user request 2026-06-11). ArmDropZ ≈ half the
+	// arm sprite's world height, so its top edge lands at the pivot. Tune ShoulderZ/ArmDropZ to taste.
 	ArmPivot = CreateDefaultSubobject<USceneComponent>(TEXT("ArmPivot"));
 	ArmPivot->SetupAttachment(Body);
-	ArmPivot->SetRelativeLocation(FVector(0.f, 0.f, 45.f)); // shoulder height
+	ArmPivot->SetRelativeLocation(FVector(0.f, 0.f, ShoulderZ)); // shoulder height
 
 	SpriteFront = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("SpriteFront"));
 	SpriteFront->SetupAttachment(ArmPivot);
-	SpriteFront->SetRelativeLocationAndRotation(FVector(0.f, -2.f, -35.f), SpriteFacing); // hangs below shoulder, in front
+	SpriteFront->SetRelativeLocationAndRotation(FVector(0.f, -2.f, -ArmDropZ), SpriteFacing); // hangs below shoulder, in front
 	SpriteFront->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	SpriteBack = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("SpriteBack"));
 	SpriteBack->SetupAttachment(ArmPivot);
-	SpriteBack->SetRelativeLocationAndRotation(FVector(0.f, 2.f, -35.f), SpriteFacing); // hangs below shoulder, behind
+	SpriteBack->SetRelativeLocationAndRotation(FVector(0.f, 2.f, -ArmDropZ), SpriteFacing); // hangs below shoulder, behind
 	SpriteBack->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	HandPoint = CreateDefaultSubobject<USceneComponent>(TEXT("HandPoint"));
@@ -195,8 +197,9 @@ FVector APPBasketCharacter::GetThrowDirection() const
 void APPBasketCharacter::ApplySprites()
 {
 	const int32 Idx = FMath::Clamp(SpriteVariant - 1, 0, 3);
-	// Left team (variants 1 & 2) is mirrored so it faces right toward the court. Arms are a bit longer (Z 1.3).
-	const float FlipX = (SpriteVariant <= 2) ? -1.f : 1.f;
+	// FLIPPED (user request 2026-06-11): all players mirrored vs before. Left team (1&2) now default,
+	// right team (3&4) mirrored. Arms are a bit longer (Z 1.3).
+	const float FlipX = (SpriteVariant <= 2) ? 1.f : -1.f;
 	if (SpriteBody)  { SpriteBody->SetSprite(PPVisual::SpriteFromTexture(this, BodyTextures[Idx]));  SpriteBody->SetRelativeScale3D(FVector(FlipX, 1.f, 1.f)); }
 	if (SpriteFront) { SpriteFront->SetSprite(PPVisual::SpriteFromTexture(this, ArmTextures[Idx]));  SpriteFront->SetRelativeScale3D(FVector(FlipX, 1.f, 1.3f)); }
 	if (SpriteBack)  { SpriteBack->SetSprite(PPVisual::SpriteFromTexture(this, BackArmTexture));     SpriteBack->SetRelativeScale3D(FVector(FlipX, 1.f, 1.3f)); }

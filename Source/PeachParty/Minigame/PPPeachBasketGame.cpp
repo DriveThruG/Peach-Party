@@ -125,10 +125,11 @@ void APPPeachBasketGame::SpawnPlay()
 	Player2Chars.Add(SpawnChar(FVector( 220.f, 0.f, 120.f), P2, EPPTeam::TeamB, 3));
 	Player2Chars.Add(SpawnChar(FVector( 420.f, 0.f, 120.f), P2, EPPTeam::TeamB, 4));
 
-	// Hoops nearer the centre so they sit inside the background. Both face inward toward the court:
-	// the texture defaults to opening RIGHT, so the LEFT hoop stays default and the RIGHT one mirrors.
-	BasketForP1 = World->SpawnActor<APPBasket>(BasketClass, O + FVector( 440.f, 0.f, 250.f), FRotator::ZeroRotator, P);
-	BasketForP2 = World->SpawnActor<APPBasket>(BasketClass, O + FVector(-440.f, 0.f, 250.f), FRotator::ZeroRotator, P);
+	// Hoops pulled IN toward the court and DOWN (user request 2026-06-11) so they sit over the field
+	// instead of floating at the screen corners. Both face inward: the texture opens RIGHT, so the LEFT
+	// hoop stays default and the RIGHT one mirrors. (±X = how far out, Z = rim height — tune by eye.)
+	BasketForP1 = World->SpawnActor<APPBasket>(BasketClass, O + FVector( 330.f, 0.f, 150.f), FRotator::ZeroRotator, P);
+	BasketForP2 = World->SpawnActor<APPBasket>(BasketClass, O + FVector(-330.f, 0.f, 150.f), FRotator::ZeroRotator, P);
 	if (BasketForP1) { BasketForP1->SetScorer(P1); BasketForP1->SetFlipped(true); } // right hoop mirrored to face the court
 	if (BasketForP2) { BasketForP2->SetScorer(P2); }
 

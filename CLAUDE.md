@@ -292,6 +292,13 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-11** — Basket layout pass (from in-game screenshot, first-guess values to iterate):
+  flipped ALL players (inverted `FlipX` in `ApplySprites`), hoops pulled in + down
+  (`±440/Z250 → ±330/Z150` in `SpawnPlay`), arm shoulder pivot made explicit via new tunables
+  `ShoulderZ`/`ArmDropZ` (arm sprite now hangs straight down from the shoulder joint). NOTE: the
+  PIE screenshot also showed *"Multiple directional lights are competing… adjust ForwardShadingPriority"*
+  → the placeholder light competes with the real level's light; set `bSpawnPlaceholderLight=false`
+  (GameMode) now that a lit level exists.
 - **2026-06-11** — Build fix: `PPGameInstance.cpp` `C2065 'SEARCH_PRESENCE': undeclared identifier`.
   Adding `Online/OnlineSessionNames.h` did NOT resolve it on UE 5.7 (constant moved/renamed again).
   Final fix: **removed the `SEARCH_PRESENCE` query block entirely** — it was dead code (project runs on

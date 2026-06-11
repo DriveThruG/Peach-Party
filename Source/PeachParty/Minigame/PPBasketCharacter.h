@@ -70,6 +70,15 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
 	FRotator SpriteFacing = FRotator(0.f, 0.f, 0.f);
 
+	/** Shoulder pivot height (arms hinge here). Capsule centre = 0, top ≈ +88. */
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
+	float ShoulderZ = 58.f;
+
+	/** How far the arm sprite hangs below the shoulder pivot ≈ half the arm sprite's world height,
+	 *  so the arm's TOP edge sits at the shoulder joint. Lower this if the arms float above the body. */
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
+	float ArmDropZ = 30.f;
+
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
 	UCapsuleComponent* Body;          // simulating physics root (collision only), locked to X-Z plane
