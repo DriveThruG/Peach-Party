@@ -75,6 +75,22 @@ void APPCharacter::BeginPlay()
 	ApplyClassStats(); // movement speed + ammo from the player's class (server + owning client)
 }
 
+void APPCharacter::PawnClientRestart()
+{
+	Super::PawnClientRestart();
+
+	// Called on the OWNING client when this pawn is set up. The main menu uses APPMenuGameMode (no pawn),
+	// so this only runs in the lobby/game -> safe place to undo the menu's "UI Only + cursor" mode.
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (PC->IsLocalController())
+		{
+			PC->SetInputMode(FInputModeGameOnly());
+			PC->bShowMouseCursor = false;
+		}
+	}
+}
+
 void APPCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);

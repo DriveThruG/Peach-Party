@@ -292,6 +292,10 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-11** — Menu/lobby input: new `Menu/PPMenuGameMode` (no pawn, no hub, plain PC) for the
+  MainMenu map — user must set it as the MainMenu level's **GameMode Override** (World Settings). And
+  `APPCharacter::PawnClientRestart` forces Game-Only input + hides the cursor on the owning client;
+  since the menu has no APPCharacter, this only fires in lobby/game = clean undo of the menu's UI mode.
 - **2026-06-11** — Basket sizing pass: camera 2× closer (`OrthoWidth` 1400→700), players +20% (new
   `APPBasketCharacter::SpriteScale`=1.2, shoulder pivot scales with it), hoops +20% (`HoopScale`
   1.3→1.56), background bleed 1.05→1.0. SpriteScale is visual-only (HandPoint/capsule reach unchanged).
