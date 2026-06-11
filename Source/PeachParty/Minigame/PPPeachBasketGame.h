@@ -57,7 +57,7 @@ protected:
 
 	/** Extra zoom on top of the exact cover-fit (1.0 = just fills; >1 = bleeds past the edges). */
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
-	float BackgroundScale = 1.05f;
+	float BackgroundScale = 1.0f;
 
 	// ---- Tunables ----
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")

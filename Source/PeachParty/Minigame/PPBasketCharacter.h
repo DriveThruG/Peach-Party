@@ -80,6 +80,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
 	float ArmRaisedDeg = 155.f;
 
+	/** Uniform VISUAL size of the whole character (body + arms). 1.2 = 20% bigger. Gameplay reach
+	 *  (HandPoint, capsule) is unaffected — purely cosmetic. The shoulder pivot scales with it. */
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
+	float SpriteScale = 1.2f;
+
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
 	UCapsuleComponent* Body;          // simulating physics root (collision only), locked to X-Z plane

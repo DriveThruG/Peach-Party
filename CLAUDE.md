@@ -292,6 +292,9 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-11** — Basket sizing pass: camera 2× closer (`OrthoWidth` 1400→700), players +20% (new
+  `APPBasketCharacter::SpriteScale`=1.2, shoulder pivot scales with it), hoops +20% (`HoopScale`
+  1.3→1.56), background bleed 1.05→1.0. SpriteScale is visual-only (HandPoint/capsule reach unchanged).
 - **2026-06-11** — Full-screen for real: the basket render was letterboxed (camera in a centred
   rectangle, HUD text full-width). Fix: `SetConstraintAspectRatio(false)` on both ortho cameras
   (GameCamera + station MinigameCamera) so the view fills the whole viewport. Background fit is now

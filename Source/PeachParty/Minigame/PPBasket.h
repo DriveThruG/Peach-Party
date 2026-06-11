@@ -48,9 +48,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
 	USceneComponent* Mouth;
 
-	/** Uniform size of the hoop sprite (1.0 = native). 1.3 = 30% bigger. */
+	/** Uniform size of the hoop sprite (1.0 = native). 1.56 = 1.3 * 1.2 (+20% on top of the prior 30%). */
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
-	float HoopScale = 1.3f;
+	float HoopScale = 1.56f;
 
 	/** Depth (+Y = away from the side camera) of the VISUAL only — pushes the hoop back behind the
 	 *  players. The scoring point (Mouth/actor origin) stays in the play plane, so scoring is unaffected. */

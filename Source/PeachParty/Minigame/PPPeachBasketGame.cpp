@@ -20,9 +20,8 @@ APPPeachBasketGame::APPPeachBasketGame()
 
 	GameCamera->SetRelativeLocation(FVector(0.f, -470.f, 115.f)); // closer still
 	GameCamera->SetRelativeRotation(FRotator(-1.f, 90.f, 0.f));   // head-on
-	// Orthographic (set in base) with a tighter width for this closer arena. This is the basket "zoom":
-	// smaller = more zoomed in. Players sit at ±420, hoops at ±250 — tune so both fit with some margin.
-	OrthoWidth = 1400.f;
+	// Orthographic (set in base). Camera "2x closer" = half the ortho width (smaller = more zoomed in).
+	OrthoWidth = 700.f; // was 1400
 	GameCamera->SetOrthoWidth(OrthoWidth);
 
 	// Lock exposure: the arena floats in dark empty space, so UE's auto-exposure cranks brightness
