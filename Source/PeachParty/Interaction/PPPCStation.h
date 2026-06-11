@@ -61,9 +61,13 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Station")
 	UStaticMeshComponent* ScreenMesh;
 
-	/** Frames ScreenMesh. Becomes the player's view target while seated. */
+	/** Frames ScreenMesh. Becomes the player's view target while seated. ORTHOGRAPHIC (2D look). */
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Station")
 	UCameraComponent* MinigameCamera;
+
+	/** Orthographic width of the seated view = how much around the monitor is visible (smaller = zoomed in). */
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Station")
+	float SeatedOrthoWidth = 300.f;
 
 	/** Where the pawn is parked while seated (snap point / anim target). */
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Station")

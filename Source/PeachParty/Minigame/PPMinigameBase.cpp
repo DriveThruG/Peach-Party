@@ -22,6 +22,10 @@ APPMinigameBase::APPMinigameBase()
 	GameCamera->SetupAttachment(SceneRoot);
 	GameCamera->SetRelativeLocation(FVector(0.f, -900.f, 250.f));
 	GameCamera->SetRelativeRotation(FRotator(-10.f, 90.f, 0.f));
+	// Minigames are a flat 2D side-on look -> orthographic (no perspective foreshortening). The FP hub
+	// camera stays perspective, so the view auto-switches projection when this becomes the view target.
+	GameCamera->SetProjectionMode(ECameraProjectionMode::Orthographic);
+	GameCamera->SetOrthoWidth(OrthoWidth);
 }
 
 void APPMinigameBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

@@ -39,6 +39,10 @@ APPPCStation::APPPCStation()
 	MinigameCamera->SetupAttachment(SceneRoot);
 	MinigameCamera->SetRelativeLocation(FVector(-70.f, 0.f, 150.f));
 	MinigameCamera->SetRelativeRotation(FRotator(0.f, 0.f, 0.f)); // faces +X toward the screen
+	// Seated = a flat "looking at the monitor" view -> orthographic too (matches the minigame look).
+	// OrthoWidth frames the screen mesh (~140 wide); raise it to show more around the monitor.
+	MinigameCamera->SetProjectionMode(ECameraProjectionMode::Orthographic);
+	MinigameCamera->SetOrthoWidth(SeatedOrthoWidth);
 
 	SeatPoint = CreateDefaultSubobject<USceneComponent>(TEXT("SeatPoint"));
 	SeatPoint->SetupAttachment(SceneRoot);

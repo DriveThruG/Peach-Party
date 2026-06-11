@@ -292,6 +292,10 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-11** — Cameras: minigame `GameCamera` and PC-station `MinigameCamera` are now
+  **orthographic** (flat 2D look); the FP hub camera stays perspective, so projection auto-switches with
+  the view target — no runtime toggling. Zoom knobs: `OrthoWidth` (base, 1800; basket override 1400) and
+  `SeatedOrthoWidth` (station, 300). Tune by eye.
 - **2026-06-11** — Basket layout pass (from in-game screenshot, first-guess values to iterate):
   flipped ALL players (inverted `FlipX` in `ApplySprites`), hoops pulled in + down
   (`±440/Z250 → ±330/Z150` in `SpawnPlay`), arm shoulder pivot made explicit via new tunables

@@ -100,6 +100,11 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Minigame")
 	float Duration = 30.f;
 
+	/** GameCamera is ORTHOGRAPHIC (2D side-on look). OrthoWidth = world-units shown across the screen
+	 *  width = the only "zoom" knob in ortho (smaller = more zoomed in). Tune per arena. */
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Minigame")
+	float OrthoWidth = 1800.f;
+
 	/** Slot scores. Subclasses may ignore these and override ForceResolve (e.g. by health). */
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "PeachParty|Minigame")
 	int32 Player1Score = 0;
