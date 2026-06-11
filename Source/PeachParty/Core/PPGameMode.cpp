@@ -8,6 +8,7 @@
 #include "Minigame/PPPeachArtilleryGame.h"
 #include "Interaction/PPPCStation.h"
 #include "Core/PPPlaceholderBlock.h"
+#include "Final/PPObjectiveRoom.h"
 #include "Engine/World.h"
 #include "Engine/DirectionalLight.h"
 #include "Components/LightComponent.h"
@@ -539,11 +540,147 @@ void APPGameMode::StartFinalPhase()
 	}
 
 	GS->SetPhase(EMatchPhase::Final);
-	GS->SetPhaseEndTime(0.f);
 	GS->ClearActiveMinigames();
 
-	// TODO(final): switch pawns to first-person, grant weapons, start combat rules.
-	UE_LOG(LogTemp, Log, TEXT("[PeachParty] Final (first-person) phase."));
+	// Reward = the minigame winner attacks first (early-game advantage). Tie -> Team A attacks.
+	const EPPTeam Attackers = (GS->GetTeamScore(EPPTeam::TeamB) > GS->GetTeamScore(EPPTeam::TeamA))
+		? EPPTeam::TeamB : EPPTeam::TeamA;
+	GS->SetAttackingTeam(Attackers);
+
+	// Gather the 3 placed objective rooms, ordered by RoomIndex.
+	Rooms.Reset();
+	TArray<AActor*> Found;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APPObjectiveRoom::StaticClass(), Found);
+	for (AActor* A : Found)
+	{
+		if (APPObjectiveRoom* Room = Cast<APPObjectiveRoom>(A)) { Rooms.Add(Room); }
+	}
+	Rooms.Sort([](const APPObjectiveRoom& A, const APPObjectiveRoom& B) { return A.GetRoomIndex() < B.GetRoomIndex(); });
+
+	if (Rooms.Num() == 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[PeachParty] Final phase: no APPObjectiveRoom placed in the level."));
+		return;
+	}
+
+	CurrentRoomArrayIndex = -1;
+	ActivateRoom(0); // open room 1 (also repositions both teams + starts the timer)
+
+	UE_LOG(LogTemp, Log, TEXT("[PeachParty] Final phase. Attackers = Team %d."), (int32)Attackers);
+}
+
+void APPGameMode::ActivateRoom(int32 RoomArrayIndex)
+{
+	APPGameState* GS = GetPPGameState();
+	if (!GS)
+	{
+		return;
+	}
+
+	if (Rooms.IsValidIndex(CurrentRoomArrayIndex))
+	{
+		Rooms[CurrentRoomArrayIndex]->SetActive(false);
+	}
+
+	// Past the last room -> all captured -> attackers win.
+	if (!Rooms.IsValidIndex(RoomArrayIndex))
+	{
+		EndFinalPhase(GS->GetAttackingTeam());
+		return;
+	}
+
+	CurrentRoomArrayIndex = RoomArrayIndex;
+	APPObjectiveRoom* Room = Rooms[RoomArrayIndex];
+	Room->SetActive(true);
+	GS->SetActiveRoomIndex(Room->GetRoomIndex());
+
+	// Per-room timer reset/extended (renewed pressure each stage).
+	GS->SetPhaseEndTime(GetWorld()->GetTimeSeconds() + RoomTimeLimit);
+	GetWorldTimerManager().SetTimer(PhaseTimerHandle, this, &APPGameMode::OnRoomTimeLimitReached, RoomTimeLimit, false);
+
+	// Reposition both teams at the new frontline (clean stage transition).
+	for (APlayerState* PS : GS->PlayerArray)
+	{
+		if (APPPlayerState* PPPS = Cast<APPPlayerState>(PS))
+		{
+			if (AController* C = PPPS->GetOwningController())
+			{
+				RespawnNow(C);
+			}
+		}
+	}
+}
+
+void APPGameMode::NotifyRoomCaptured(APPObjectiveRoom* Room)
+{
+	if (!Room || !Rooms.IsValidIndex(CurrentRoomArrayIndex) || Rooms[CurrentRoomArrayIndex] != Room)
+	{
+		return; // only the active room counts
+	}
+	// Frontline shifts forward to the next room (timer resets inside ActivateRoom).
+	ActivateRoom(CurrentRoomArrayIndex + 1);
+}
+
+void APPGameMode::OnRoomTimeLimitReached()
+{
+	// Attackers failed to take the current room in time -> defenders win.
+	if (APPGameState* GS = GetPPGameState())
+	{
+		const EPPTeam Defenders = (GS->GetAttackingTeam() == EPPTeam::TeamA) ? EPPTeam::TeamB : EPPTeam::TeamA;
+		EndFinalPhase(Defenders);
+	}
+}
+
+void APPGameMode::EndFinalPhase(EPPTeam WinningTeam)
+{
+	GetWorldTimerManager().ClearTimer(PhaseTimerHandle);
+	for (APPObjectiveRoom* Room : Rooms)
+	{
+		if (Room) { Room->SetActive(false); }
+	}
+	if (APPGameState* GS = GetPPGameState())
+	{
+		GS->SetPhase(EMatchPhase::PostMatch);
+		GS->SetPhaseEndTime(0.f);
+	}
+	UE_LOG(LogTemp, Log, TEXT("[PeachParty] Final phase over. Winner = Team %d."), (int32)WinningTeam);
+}
+
+FTransform APPGameMode::GetRoleSpawnTransform(const APPPlayerState* PS) const
+{
+	if (PS && Rooms.IsValidIndex(CurrentRoomArrayIndex))
+	{
+		const APPObjectiveRoom* Room = Rooms[CurrentRoomArrayIndex];
+		const APPGameState* GS = GetPPGameState();
+		const bool bAttacker = GS && PS->GetTeam() == GS->GetAttackingTeam();
+		return bAttacker ? Room->GetAttackerSpawn() : Room->GetDefenderSpawn();
+	}
+	return FTransform(FVector(0.f, 0.f, 200.f));
+}
+
+void APPGameMode::ScheduleRespawn(AController* Controller)
+{
+	if (!Controller)
+	{
+		return;
+	}
+	FTimerHandle Handle;
+	FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &APPGameMode::RespawnNow, Controller);
+	GetWorldTimerManager().SetTimer(Handle, Del, RespawnDelay, false);
+}
+
+void APPGameMode::RespawnNow(AController* Controller)
+{
+	if (!Controller)
+	{
+		return;
+	}
+	APPPlayerState* PS = Controller->GetPlayerState<APPPlayerState>();
+	if (PS)
+	{
+		PS->ResetForRespawn();
+	}
+	RestartPlayerAtTransform(Controller, GetRoleSpawnTransform(PS));
 }
 
 void APPGameMode::EndMatch()

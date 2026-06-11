@@ -131,6 +131,14 @@ void APPPlayerController::ServerMinigameInput_Implementation(FName Action, bool 
 	}
 }
 
+void APPPlayerController::ServerSelectClass_Implementation(EPPClass NewClass)
+{
+	if (APPPlayerState* PS = GetPlayerState<APPPlayerState>())
+	{
+		PS->SetSelectedClass(NewClass); // PlayerState gates it to the slipping/respawn window
+	}
+}
+
 void APPPlayerController::OnRep_View()
 {
 	RefreshViewTarget();

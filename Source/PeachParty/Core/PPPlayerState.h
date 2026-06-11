@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include "Core/PPTypes.h"
+#include "Final/PPClassTypes.h"
 #include "PPPlayerState.generated.h"
 
 class APPMinigameBase;
@@ -39,11 +40,33 @@ public:
 	UFUNCTION(BlueprintPure, Category = "PeachParty|Player")
 	APPMinigameBase* GetCurrentMinigame() const { return CurrentMinigame; }
 
+	// ---- Final phase: class + wetness ----
+	UFUNCTION(BlueprintPure, Category = "PeachParty|Final")
+	EPPClass GetSelectedClass() const { return SelectedClass; }
+
+	UFUNCTION(BlueprintPure, Category = "PeachParty|Final")
+	FPPClassStats GetClassStats() const { return PPClass::GetDefaults(SelectedClass); }
+
+	UFUNCTION(BlueprintPure, Category = "PeachParty|Final")
+	float GetWetness() const { return Wetness; }
+
+	UFUNCTION(BlueprintPure, Category = "PeachParty|Final")
+	bool IsSlipping() const { return bIsSlipping; }
+
 	/** SERVER only. */
 	void SetTeam(EPPTeam NewTeam);
 	void SetReady(bool bNewReady);
 	void AddMatchScore(int32 Delta);
 	void SetCurrentMinigame(APPMinigameBase* Minigame);
+
+	/** SERVER. Change class — allowed ONLY while slipping/respawning (anti mid-life-switch). */
+	void SetSelectedClass(EPPClass NewClass);
+
+	/** SERVER. Add wetness; at >=100 sets bIsSlipping (caller triggers ragdoll + respawn). Returns true if it just hit 100. */
+	bool AddWetness(float Amount);
+
+	/** SERVER. Reset wetness/slipping for a fresh life. */
+	void ResetForRespawn();
 
 protected:
 	UPROPERTY(ReplicatedUsing = OnRep_Team, BlueprintReadOnly, Category = "PeachParty|Player")
@@ -58,6 +81,27 @@ protected:
 	/** The 1v1 match this player is currently in (null in lobby / waiting / done). */
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "PeachParty|Player")
 	APPMinigameBase* CurrentMinigame = nullptr;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Class, BlueprintReadOnly, Category = "PeachParty|Final")
+	EPPClass SelectedClass = EPPClass::Sprayer;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Wetness, BlueprintReadOnly, Category = "PeachParty|Final")
+	float Wetness = 0.f;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "PeachParty|Final")
+	bool bIsSlipping = false;
+
+	UFUNCTION()
+	void OnRep_Class();
+
+	UFUNCTION()
+	void OnRep_Wetness();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "PeachParty|Final")
+	void BP_OnClassChanged(EPPClass NewClass);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "PeachParty|Final")
+	void BP_OnWetnessChanged(float NewWetness);
 
 	UFUNCTION()
 	void OnRep_Team();

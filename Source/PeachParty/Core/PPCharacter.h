@@ -2,10 +2,12 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Core/PPTypes.h"
 #include "PPCharacter.generated.h"
 
 class UCameraComponent;
 class UStaticMeshComponent;
+class APPWaterProjectile;
 class IPPInteractable;
 
 /**
@@ -32,8 +34,12 @@ public:
 	APPCharacter();
 
 	virtual void Tick(float DeltaSeconds) override;
+	virtual void BeginPlay() override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	/** SERVER. Called by a water projectile that hit this (enemy) player. */
+	void ApplyWetness(float Amount, EPPTeam InstigatorTeam);
 
 protected:
 	// ---- Movement / look ----
@@ -72,6 +78,28 @@ protected:
 	void OnMG_PowerUp();
 	void OnMG_PowerDown();
 	void OnMG_Weapon();
+
+	// ---- Final-phase combat ----
+	/** Apply the player's class stats (movement speed, ammo). Called on spawn. */
+	void ApplyClassStats();
+
+	void OnFirePressed();
+
+	UFUNCTION(Server, Reliable)
+	void ServerFire();
+
+	/** Played on all clients when this player slips (wetness 100): cosmetic + lock movement. */
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastSlip();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "PeachParty|Final")
+	void BP_OnSlip();
+
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Combat")
+	TSubclassOf<APPWaterProjectile> WaterProjectileClass;
+
+	int32 CurrentAmmo = 100;
+	float LastFireServerTime = -100.f;
 
 	/** True if the local player is currently in a 1v1 match (reads replicated PlayerState). */
 	bool IsInMinigame() const;

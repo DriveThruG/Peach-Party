@@ -50,6 +50,16 @@ public:
 	UFUNCTION(BlueprintPure, Category = "PeachParty|Match")
 	int32 GetTeamScore(EPPTeam Team) const;
 
+	// ---- Final phase (frontline) ----
+	UFUNCTION(BlueprintPure, Category = "PeachParty|Final")
+	EPPTeam GetAttackingTeam() const { return AttackingTeam; }
+
+	UFUNCTION(BlueprintPure, Category = "PeachParty|Final")
+	int32 GetActiveRoomIndex() const { return ActiveRoomIndex; }
+
+	void SetAttackingTeam(EPPTeam Team);
+	void SetActiveRoomIndex(int32 Index);
+
 	// ---- SERVER only mutators (called by APPGameMode) ----
 	void SetPhase(EMatchPhase NewPhase);
 	void SetCurrentMinigameIndex(int32 Index);
@@ -77,6 +87,12 @@ protected:
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "PeachParty|Match")
 	TArray<APPMinigameBase*> ActiveMinigames;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "PeachParty|Final")
+	EPPTeam AttackingTeam = EPPTeam::TeamA;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "PeachParty|Final")
+	int32 ActiveRoomIndex = 0; // 0 = none yet; 1..3 active room
 
 	UFUNCTION()
 	void OnRep_Phase();

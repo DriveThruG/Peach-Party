@@ -9,6 +9,7 @@
 class APPGameState;
 class APPMinigameBase;
 class APPPlayerState;
+class APPObjectiveRoom;
 
 /**
  * SERVER ONLY. The match brain. Exists only on the listen-server host; clients never see it.
@@ -42,6 +43,12 @@ public:
 	/** Called by a minigame match when it is decided. Scores it and drives the matchmaker. */
 	void NotifyMinigameFinished(APPMinigameBase* Match, EMatchResult Result);
 
+	/** Called by an objective room when fully captured: lock it, shift the frontline, reset the timer. */
+	void NotifyRoomCaptured(APPObjectiveRoom* Room);
+
+	/** Called when a player slips (wetness 100): schedule their respawn at the current frontline spawn. */
+	void ScheduleRespawn(AController* Controller);
+
 	// ---- Phase transitions (server authoritative) ----
 	void EnterLobbyPhase();
 	void StartMinigamePhase();
@@ -69,6 +76,13 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Rules")
 	float RewardDurationSeconds = 8.f;
+
+	/** Final phase: time the attackers get per room (reset/extended on each capture). */
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Rules")
+	float RoomTimeLimit = 90.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Rules")
+	float RespawnDelay = 4.f;
 
 	/** Game played in round 1 / round 2. Default to the C++ classes; overridable in BP. */
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Rules")
@@ -110,6 +124,13 @@ protected:
 
 	void OnRewardFinished();
 
+	// ---- Final phase (frontline) ----
+	void ActivateRoom(int32 RoomArrayIndex);   // opens room, repositions teams, (re)starts the timer
+	void OnRoomTimeLimitReached();              // attackers ran out of time on the current room
+	void EndFinalPhase(EPPTeam WinningTeam);
+	FTransform GetRoleSpawnTransform(const APPPlayerState* PS) const;
+	void RespawnNow(AController* Controller);
+
 	APPGameState* GetPPGameState() const;
 
 	FTimerHandle PhaseTimerHandle;
@@ -125,4 +146,10 @@ protected:
 
 	/** Counts spawned players to spread them out across placeholder spawn points. */
 	int32 PlayerSpawnCounter = 0;
+
+	/** Final phase: the 3 objective rooms ordered by RoomIndex, and which one is active. */
+	UPROPERTY()
+	TArray<APPObjectiveRoom*> Rooms;
+
+	int32 CurrentRoomArrayIndex = -1;
 };

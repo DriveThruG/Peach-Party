@@ -149,6 +149,33 @@ Client `APPCharacter` action handlers → `APPPlayerController::ServerMinigameIn
 `PlayerState->CurrentMinigame->HandleInput(...)`. Forwarded only while in a match (client-side gate).
 Verbs: `Primary, Left, Right, Up, Down, Power+, Power-, Weapon`.
 
+## 6b. Final phase — frontline combat (`Final/`)
+
+Attackers vs Defenders over **3 sequential objective rooms** (`APPObjectiveRoom`, placed in the level
+with `RoomIndex` 1/2/3). Server-authoritative throughout.
+
+- **Roles:** the minigame winner attacks first (`GameState.AttackingTeam`); a player's role = their
+  fixed team vs the attacking team. Teams stay fixed.
+- **Frontline:** `APPGameMode` opens exactly ONE room at a time (`ActivateRoom`). Capture in order only.
+  `APPObjectiveRoom::Tick` (server, active room) sums attackers vs defenders in its zone (distance
+  check, no overlap bookkeeping): attackers with no defender present fill the bar (faster with more
+  attackers + `CaptureSpeedMul`, Engineers high); a defender stalls/reverses it. At 100% → 
+  `NotifyRoomCaptured` → lock room, `ActivateRoom(next)` → **timer resets** (`RoomTimeLimit`) + both
+  teams reposition (`RespawnNow` at the new room's attacker/defender spawn points). Past the last room
+  → attackers win; room timer expires → defenders win (`EndFinalPhase`).
+- **Classes** (`Final/PPClassTypes.h`): `EPPClass {Sprayer,Punisher,Engineer,Runner}` + `FPPClassStats`
+  (move/fire/spread/ammo/wetness/capture/refill). Server defaults in `PPClass::GetDefaults`. Stored on
+  `APPPlayerState::SelectedClass` (replicated); chosen via `PlayerController::ServerSelectClass`, which
+  the PlayerState gates to the **slipping/respawn window only** (no mid-life switching). Applied on
+  spawn in `APPCharacter::ApplyClassStats` (movement + ammo) and read live by fire/capture.
+- **Combat:** `APPCharacter::ServerFire` (fire-rate + ammo gated, server aim via `GetBaseAimRotation`)
+  spawns `APPWaterProjectile` (projectile, not hitscan; movement-replicated). On hitting an ENEMY →
+  `Character::ApplyWetness` → `PlayerState::AddWetness`; at 100 → `bIsSlipping`, `MulticastSlip`
+  (lock movement + `BP_OnSlip`), `GameMode::ScheduleRespawn`. Friendly water does nothing.
+- **TODO (designed, not built):** object/gravity-gun pickup-throw (small wetness + knockback + stun,
+  can't shoot while holding), refill stations (reload only there, `RefillSpeedMul`). Real ragdoll
+  needs a skeletal mesh + physics asset.
+
 ## 7. First-person character (`APPCharacter`)
 
 - Eye-height `FirstPersonCamera`, body yaws with controller. WASD + mouse, **Shift** = **toggle**
@@ -220,6 +247,10 @@ lighting otherwise "competes" with it; only enable on a truly empty level).
 - **2026-06-11** — Paper2D enabled; Peach Basket switched to real sprites referencing the user's
   imported textures by path (body + 2 arms layered, ball, hoop). Physics locked to X-Z plane (2D side
   view), chars face camera, 4 art variants via replicated `SpriteVariant`.
+- **2026-06-11** — Final phase implemented (backbone): class system (4 classes, replicated, respawn-
+  gated switching), wetness/slip + respawn, frontline 3-room objective progression (`APPObjectiveRoom`
+  + GameMode front-shift + per-room timer reset), water-gun projectile combat (team-aware wetness).
+  New `Final/` folder. Object/gravity-gun + refill stations designed but not yet built.
 - **2026-06-11** — Basket arena: hid the floor/walls (collision-only, `SetVisibility(false)`) so the
   visible "box" is gone; added a full-screen `Background` Paper2D sprite (from `Background.uasset`)
   behind the action (`BackgroundOffset`/`BackgroundScale` tunable). Aiming for the reference court look.

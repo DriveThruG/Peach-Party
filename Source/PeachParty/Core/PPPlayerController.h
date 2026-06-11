@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "Final/PPClassTypes.h"
 #include "PPPlayerController.generated.h"
 
 class APPPCStation;
@@ -51,6 +52,10 @@ public:
 	/** Client -> Server: routed gameplay input for the minigame this player is currently in. */
 	UFUNCTION(Server, Reliable)
 	void ServerMinigameInput(FName Action, bool bPressed);
+
+	/** Client -> Server: pick a class (server gates it to the respawn/slipping window). */
+	UFUNCTION(Server, Reliable)
+	void ServerSelectClass(EPPClass NewClass);
 
 	UFUNCTION(BlueprintPure, Category = "PeachParty|Interaction")
 	APPPCStation* GetSeatedStation() const { return SeatedStation; }

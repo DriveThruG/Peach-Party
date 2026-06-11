@@ -12,6 +12,18 @@ void APPGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(APPGameState, TeamBScore);
 	DOREPLIFETIME(APPGameState, PhaseEndServerTime);
 	DOREPLIFETIME(APPGameState, ActiveMinigames);
+	DOREPLIFETIME(APPGameState, AttackingTeam);
+	DOREPLIFETIME(APPGameState, ActiveRoomIndex);
+}
+
+void APPGameState::SetAttackingTeam(EPPTeam Team)
+{
+	if (HasAuthority()) { AttackingTeam = Team; }
+}
+
+void APPGameState::SetActiveRoomIndex(int32 Index)
+{
+	if (HasAuthority()) { ActiveRoomIndex = Index; }
 }
 
 int32 APPGameState::GetTeamScore(EPPTeam Team) const

@@ -14,6 +14,57 @@ void APPPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(APPPlayerState, bIsReady);
 	DOREPLIFETIME(APPPlayerState, MatchScore);
 	DOREPLIFETIME(APPPlayerState, CurrentMinigame);
+	DOREPLIFETIME(APPPlayerState, SelectedClass);
+	DOREPLIFETIME(APPPlayerState, Wetness);
+	DOREPLIFETIME(APPPlayerState, bIsSlipping);
+}
+
+void APPPlayerState::SetSelectedClass(EPPClass NewClass)
+{
+	// Only the server, and only while down/respawning — prevents mid-life stat swapping.
+	if (!HasAuthority() || !bIsSlipping || SelectedClass == NewClass)
+	{
+		return;
+	}
+	SelectedClass = NewClass;
+	OnRep_Class();
+}
+
+bool APPPlayerState::AddWetness(float Amount)
+{
+	if (!HasAuthority() || bIsSlipping || Amount <= 0.f)
+	{
+		return false;
+	}
+	Wetness = FMath::Clamp(Wetness + Amount, 0.f, 100.f);
+	OnRep_Wetness();
+	if (Wetness >= 100.f)
+	{
+		bIsSlipping = true; // caller (character/gamemode) reacts: ragdoll + schedule respawn
+		return true;
+	}
+	return false;
+}
+
+void APPPlayerState::ResetForRespawn()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	Wetness = 0.f;
+	bIsSlipping = false;
+	OnRep_Wetness();
+}
+
+void APPPlayerState::OnRep_Class()
+{
+	BP_OnClassChanged(SelectedClass);
+}
+
+void APPPlayerState::OnRep_Wetness()
+{
+	BP_OnWetnessChanged(Wetness);
 }
 
 void APPPlayerState::SetCurrentMinigame(APPMinigameBase* Minigame)

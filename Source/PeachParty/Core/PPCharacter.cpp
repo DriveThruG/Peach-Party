@@ -1,6 +1,8 @@
 #include "Core/PPCharacter.h"
 #include "Core/PPPlayerController.h"
 #include "Core/PPPlayerState.h"
+#include "Core/PPGameMode.h"
+#include "Final/PPWaterProjectile.h"
 #include "Interaction/PPInteractable.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -49,6 +51,8 @@ APPCharacter::APPCharacter()
 	{
 		GetMesh()->SetOwnerNoSee(true);
 	}
+
+	WaterProjectileClass = APPWaterProjectile::StaticClass(); // works with no BP setup
 }
 
 void APPCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -56,6 +60,12 @@ void APPCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	// Owner sets sprint locally for responsiveness; others get it replicated.
 	DOREPLIFETIME_CONDITION(APPCharacter, bIsSprinting, COND_SkipOwner);
+}
+
+void APPCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+	ApplyClassStats(); // movement speed + ammo from the player's class (server + owning client)
 }
 
 void APPCharacter::Tick(float DeltaSeconds)
@@ -86,6 +96,7 @@ void APPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &APPCharacter::OnCrouchPressed);
 	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &APPCharacter::OnCrouchReleased);
 
+	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &APPCharacter::OnFirePressed);
 	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &APPCharacter::OnInteractPressed);
 	PlayerInputComponent->BindAction("SpectateNext", IE_Pressed, this, &APPCharacter::OnSpectateNext);
 	PlayerInputComponent->BindAction("SpectatePrev", IE_Pressed, this, &APPCharacter::OnSpectatePrev);
@@ -239,6 +250,97 @@ void APPCharacter::OnInteractPressed()
 	{
 		PC->ServerRequestInteract(Target);
 	}
+}
+
+// --------------------------------------------------------- final combat ----
+
+void APPCharacter::ApplyClassStats()
+{
+	const APPPlayerState* PS = GetPlayerState<APPPlayerState>();
+	if (!PS)
+	{
+		return;
+	}
+	const FPPClassStats St = PS->GetClassStats();
+	WalkSpeed = St.MoveSpeed;          // class sets base walk speed...
+	SprintSpeed = St.MoveSpeed * 1.25f; // ...sprint scales from it
+	ApplyMovementSpeed();
+	CurrentAmmo = St.AmmoCapacity;
+}
+
+void APPCharacter::OnFirePressed()
+{
+	if (IsInMinigame())
+	{
+		return; // no shooting during the 2D minigames
+	}
+	ServerFire();
+}
+
+void APPCharacter::ServerFire_Implementation()
+{
+	APPPlayerState* PS = GetPlayerState<APPPlayerState>();
+	UWorld* World = GetWorld();
+	if (!PS || PS->IsSlipping() || !World || !WaterProjectileClass)
+	{
+		return;
+	}
+
+	const FPPClassStats St = PS->GetClassStats();
+	const float Now = World->GetTimeSeconds();
+	if (Now - LastFireServerTime < St.FireInterval || CurrentAmmo <= 0)
+	{
+		return; // fire-rate gate + ammo (reload only at refill stations — handled elsewhere)
+	}
+	LastFireServerTime = Now;
+	--CurrentAmmo;
+
+	// Server-authoritative aim from the replicated view rotation, plus class spread.
+	FRotator Aim = GetBaseAimRotation();
+	Aim.Yaw   += FMath::FRandRange(-St.SpreadDeg, St.SpreadDeg);
+	Aim.Pitch += FMath::FRandRange(-St.SpreadDeg, St.SpreadDeg);
+	const FVector Dir = Aim.Vector();
+	const FVector Start = GetActorLocation() + FVector(0.f, 0.f, 50.f) + Dir * 70.f;
+
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	Params.Owner = this;
+	if (APPWaterProjectile* Shot = World->SpawnActor<APPWaterProjectile>(WaterProjectileClass, Start, Dir.Rotation(), Params))
+	{
+		Shot->Launch(Dir * St.ProjectileSpeed, PS->GetTeam(), St.WetnessPerHit, this);
+	}
+}
+
+void APPCharacter::ApplyWetness(float Amount, EPPTeam InstigatorTeam)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	APPPlayerState* PS = GetPlayerState<APPPlayerState>();
+	if (!PS)
+	{
+		return;
+	}
+	if (PS->AddWetness(Amount)) // returns true when it just hit 100
+	{
+		MulticastSlip();
+		if (APPGameMode* GM = GetWorld()->GetAuthGameMode<APPGameMode>())
+		{
+			GM->ScheduleRespawn(GetController());
+		}
+	}
+}
+
+void APPCharacter::MulticastSlip_Implementation()
+{
+	// Lock movement; the new pawn after respawn restores it. (Real ragdoll needs a skeletal mesh +
+	// physics asset — drive that from BP_OnSlip once a character mesh exists.)
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->DisableMovement();
+	}
+	BP_OnSlip();
 }
 
 void APPCharacter::OnSpectateNext()
