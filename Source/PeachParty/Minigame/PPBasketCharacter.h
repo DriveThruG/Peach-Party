@@ -36,6 +36,10 @@ public:
 	void InitCharacter(APPPlayerState* InOwner, EPPTeam InTeam, int32 InVariant);
 
 	void DoJump(float UpImpulse, float ForwardImpulse);
+
+	/** True if standing on something (short downward trace) — used to block air jumps. */
+	bool IsGrounded() const;
+
 	void StartCharge();
 	float StopCharge();
 	void ResetTo(const FTransform& Transform);
@@ -55,9 +59,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
 	float ArmRaiseRateDegPerSec = 120.f;
 
-	/** How the sprites face the camera. Tune if sprites appear edge-on (try yaw +/-90 or roll 90). */
+	/** How the sprites face the camera. 0 = Paper2D default (faces -Y, toward the side camera). */
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
-	FRotator SpriteFacing = FRotator(0.f, 90.f, 0.f);
+	FRotator SpriteFacing = FRotator(0.f, 0.f, 0.f);
 
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")

@@ -31,7 +31,7 @@ APPPeachBasketGame::APPPeachBasketGame()
 	Background = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("Background"));
 	Background->SetupAttachment(SceneRoot);
 	Background->SetRelativeLocation(BackgroundOffset);
-	Background->SetRelativeRotation(FRotator(0.f, 90.f, 0.f)); // face the camera; tune if edge-on
+	Background->SetRelativeRotation(FRotator(0.f, 0.f, 0.f)); // Paper2D default faces -Y = the side camera
 	Background->SetRelativeScale3D(FVector(BackgroundScale));
 	Background->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Background->SetTranslucentSortPriority(-100); // draw behind everything

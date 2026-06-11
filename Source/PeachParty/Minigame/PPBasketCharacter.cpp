@@ -4,6 +4,7 @@
 #include "PaperSpriteComponent.h"
 #include "Engine/Texture2D.h"
 #include "PhysicsEngine/BodyInstance.h"
+#include "Engine/World.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Net/UnrealNetwork.h"
 
@@ -104,13 +105,28 @@ void APPBasketCharacter::InitCharacter(APPPlayerState* InOwner, EPPTeam InTeam, 
 
 void APPBasketCharacter::DoJump(float UpImpulse, float ForwardImpulse)
 {
-	if (!HasAuthority())
+	if (!HasAuthority() || !IsGrounded())
 	{
-		return;
+		return; // no air jumps — must be standing on something
 	}
 	// Jump along the body's CURRENT (tilted) up vector -> wobble produces angled jumps. Small bias toward the enemy.
 	const FVector Impulse = GetActorUpVector() * UpImpulse + FVector(FacingSign, 0.f, 0.f) * (ForwardImpulse * 0.4f);
 	Body->AddImpulse(Impulse, NAME_None, /*bVelChange=*/true);
+}
+
+bool APPBasketCharacter::IsGrounded() const
+{
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return false;
+	}
+	const FVector Start = GetActorLocation();
+	const FVector End = Start - FVector(0.f, 0.f, 88.f + 15.f); // capsule half-height + margin
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+	FHitResult Hit;
+	return World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params);
 }
 
 void APPBasketCharacter::StartCharge()

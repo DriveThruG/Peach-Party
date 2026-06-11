@@ -26,7 +26,7 @@ APPBasket::APPBasket()
 
 	Sprite = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("Sprite"));
 	Sprite->SetupAttachment(Mouth);
-	Sprite->SetRelativeRotation(FRotator(0.f, 90.f, 0.f)); // face the camera; tune if edge-on
+	Sprite->SetRelativeRotation(FRotator(0.f, 0.f, 0.f)); // Paper2D default faces -Y = the side camera
 	Sprite->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	static ConstructorHelpers::FObjectFinder<UTexture2D> HoopTex(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Hoop.Hoop"));

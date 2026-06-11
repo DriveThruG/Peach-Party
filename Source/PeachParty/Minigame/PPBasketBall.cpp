@@ -30,7 +30,7 @@ APPBasketBall::APPBasketBall()
 
 	Sprite = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("Sprite"));
 	Sprite->SetupAttachment(Mesh);
-	Sprite->SetRelativeRotation(FRotator(0.f, 90.f, 0.f)); // face the camera; tune if edge-on
+	Sprite->SetRelativeRotation(FRotator(0.f, 0.f, 0.f)); // Paper2D default faces -Y = the side camera
 	Sprite->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	static ConstructorHelpers::FObjectFinder<UTexture2D> BallTex(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Ball.Ball"));
