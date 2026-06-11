@@ -37,7 +37,7 @@ Source/PeachParty/
     PPGameState.*        Replicated match truth: phase, scores, countdown end-time
     PPPlayerState.*      Replicated per-player: team, ready, score
     PPPlayerController.* Interaction RPCs + local camera switch (sit/stand)
-    PPCharacter.*        3D-hub pawn; client-side interaction trace
+    PPCharacter.*        First-person pawn: walk/sprint/jump/crouch + interaction trace
   Interaction/
     PPInteractable.h     Interface: client focus (cosmetic) + ServerInteract (authoritative)
     PPPCStation.*        The "PC" actor — ready-seat AND minigame-seat, with a screen camera

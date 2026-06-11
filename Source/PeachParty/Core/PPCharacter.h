@@ -4,18 +4,23 @@
 #include "GameFramework/Character.h"
 #include "PPCharacter.generated.h"
 
-class USpringArmComponent;
 class UCameraComponent;
 class IPPInteractable;
 
 /**
- * The player's body in the 3D hub. Third-person in the hub; the final phase swaps to the
- * first-person camera (toggle CameraMode / detach the spring arm in the Final phase).
+ * First-person player character for Peach Party.
  *
- * Interaction is CLIENT-driven discovery + SERVER-authoritative execution:
- *  - Tick (owning client only) traces ahead for an IPPInteractable and tracks focus.
- *  - Interact() sends the focused actor to the server via the controller's Server RPC,
- *    OR, if already seated, asks the server to stand up. One key does both.
+ * Movement: walk / sprint / jump / crouch, all networked. ACharacter + CharacterMovementComponent
+ * give server-authoritative, client-predicted movement out of the box (position, jump and crouch
+ * replicate automatically); we only add a replicated sprint flag on top. The capsule blocks world
+ * geometry, so walls/objects can't be walked through.
+ *
+ * Camera: a first-person UCameraComponent at eye height; the body yaws with the controller.
+ *
+ * Interaction: client-driven discovery (a trace each Tick on the owning client) + server-authoritative
+ * execution (the focused actor is sent to the server via the PlayerController's Server RPC).
+ *
+ * Minigame input is forwarded to the active match only while playing (see ForwardMinigameInput).
  */
 UCLASS()
 class PEACHPARTY_API APPCharacter : public ACharacter
@@ -27,13 +32,27 @@ public:
 
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
-	// ---- Movement / look (legacy axis bindings; see DefaultInput.ini) ----
+	// ---- Movement / look ----
 	void MoveForward(float Value);
 	void MoveRight(float Value);
 	void TurnYaw(float Value);
 	void LookPitch(float Value);
+
+	void OnJumpPressed();
+	void OnJumpReleased();
+	void StartSprint();
+	void StopSprint();
+	void OnCrouchPressed();
+	void OnCrouchReleased();
+
+	/** Server RPC so the authority also applies the sprint speed. */
+	UFUNCTION(Server, Reliable)
+	void ServerSetSprint(bool bNewSprinting);
+
+	void ApplyMovementSpeed();
 
 	/** Interact pressed: sit at the focused PC, or stand up if already seated. */
 	void OnInteractPressed();
@@ -62,12 +81,22 @@ protected:
 	/** Owning-client trace that updates the currently focused interactable. */
 	void UpdateFocus();
 
+	// ---- Camera ----
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
-	USpringArmComponent* CameraBoom;
+	UCameraComponent* FirstPersonCamera;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
-	UCameraComponent* FollowCamera;
+	// ---- Movement tuning ----
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Movement")
+	float WalkSpeed = 420.f;
 
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Movement")
+	float SprintSpeed = 720.f;
+
+	/** Replicated so simulated proxies could match (position replicates regardless). */
+	UPROPERTY(Replicated)
+	bool bIsSprinting = false;
+
+	// ---- Interaction ----
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Interaction")
 	float InteractTraceDistance = 300.f;
 

@@ -2,27 +2,45 @@
 #include "Core/PPPlayerController.h"
 #include "Core/PPPlayerState.h"
 #include "Interaction/PPInteractable.h"
-#include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Engine/World.h"
+#include "Net/UnrealNetwork.h"
 
 APPCharacter::APPCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	bUseControllerRotationYaw = false;
-	GetCharacterMovement()->bOrientRotationToMovement = true;
-	GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f);
+	// First-person: the body turns with the controller's yaw; no orient-to-movement.
+	bUseControllerRotationYaw = true;
+	GetCharacterMovement()->bOrientRotationToMovement = false;
+	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+	GetCharacterMovement()->JumpZVelocity = 500.f;
+	GetCharacterMovement()->AirControl = 0.4f;
+	GetCharacterMovement()->NavAgentProps.bCanCrouch = true; // enable crouching
 
-	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->TargetArmLength = 350.f;
-	CameraBoom->bUsePawnControlRotation = true;
+	// The capsule blocks world geometry, so players can't walk through walls/objects.
+	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Pawn"));
 
-	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
-	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
-	FollowCamera->bUsePawnControlRotation = false;
+	FirstPersonCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
+	FirstPersonCamera->SetupAttachment(GetCapsuleComponent());
+	FirstPersonCamera->SetRelativeLocation(FVector(0.f, 0.f, 64.f)); // ~eye height
+	FirstPersonCamera->bUsePawnControlRotation = true;
+
+	// Don't draw our own body to ourselves (avoids first-person clipping when a mesh is assigned).
+	if (GetMesh())
+	{
+		GetMesh()->SetOwnerNoSee(true);
+	}
+}
+
+void APPCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	// Owner sets sprint locally for responsiveness; others get it replicated.
+	DOREPLIFETIME_CONDITION(APPCharacter, bIsSprinting, COND_SkipOwner);
 }
 
 void APPCharacter::Tick(float DeltaSeconds)
@@ -46,6 +64,14 @@ void APPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAxis("Turn", this, &APPCharacter::TurnYaw);
 	PlayerInputComponent->BindAxis("LookUp", this, &APPCharacter::LookPitch);
 
+	// Movement actions.
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &APPCharacter::OnJumpPressed);
+	PlayerInputComponent->BindAction("Jump", IE_Released, this, &APPCharacter::OnJumpReleased);
+	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &APPCharacter::StartSprint);
+	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &APPCharacter::StopSprint);
+	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &APPCharacter::OnCrouchPressed);
+	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &APPCharacter::OnCrouchReleased);
+
 	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &APPCharacter::OnInteractPressed);
 	PlayerInputComponent->BindAction("SpectateNext", IE_Pressed, this, &APPCharacter::OnSpectateNext);
 	PlayerInputComponent->BindAction("SpectatePrev", IE_Pressed, this, &APPCharacter::OnSpectatePrev);
@@ -62,33 +88,7 @@ void APPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAction("MGWeapon", IE_Pressed, this, &APPCharacter::OnMG_Weapon);
 }
 
-bool APPCharacter::IsInMinigame() const
-{
-	const APPPlayerState* PS = GetPlayerState<APPPlayerState>();
-	return PS && PS->GetCurrentMinigame() != nullptr;
-}
-
-void APPCharacter::ForwardMinigameInput(FName Action, bool bPressed)
-{
-	if (!IsInMinigame())
-	{
-		return;
-	}
-	if (APPPlayerController* PC = Cast<APPPlayerController>(GetController()))
-	{
-		PC->ServerMinigameInput(Action, bPressed);
-	}
-}
-
-void APPCharacter::OnMG_PrimaryPressed()  { ForwardMinigameInput(TEXT("Primary"), true); }
-void APPCharacter::OnMG_PrimaryReleased() { ForwardMinigameInput(TEXT("Primary"), false); }
-void APPCharacter::OnMG_Left()            { ForwardMinigameInput(TEXT("Left"), true); }
-void APPCharacter::OnMG_Right()           { ForwardMinigameInput(TEXT("Right"), true); }
-void APPCharacter::OnMG_Up()              { ForwardMinigameInput(TEXT("Up"), true); }
-void APPCharacter::OnMG_Down()            { ForwardMinigameInput(TEXT("Down"), true); }
-void APPCharacter::OnMG_PowerUp()         { ForwardMinigameInput(TEXT("Power+"), true); }
-void APPCharacter::OnMG_PowerDown()       { ForwardMinigameInput(TEXT("Power-"), true); }
-void APPCharacter::OnMG_Weapon()          { ForwardMinigameInput(TEXT("Weapon"), true); }
+// ---------------------------------------------------------------- movement ----
 
 void APPCharacter::MoveForward(float Value)
 {
@@ -119,6 +119,56 @@ void APPCharacter::LookPitch(float Value)
 {
 	AddControllerPitchInput(Value);
 }
+
+void APPCharacter::OnJumpPressed()
+{
+	if (IsInMinigame()) { return; } // Space is the minigame action while playing
+	Jump();                          // ACharacter::Jump — networked via CharacterMovement
+}
+
+void APPCharacter::OnJumpReleased()
+{
+	StopJumping();
+}
+
+void APPCharacter::StartSprint()
+{
+	if (IsInMinigame()) { return; }
+	bIsSprinting = true;
+	ApplyMovementSpeed();   // responsive on the owning client
+	ServerSetSprint(true);  // authoritative on the server
+}
+
+void APPCharacter::StopSprint()
+{
+	bIsSprinting = false;
+	ApplyMovementSpeed();
+	ServerSetSprint(false);
+}
+
+void APPCharacter::ServerSetSprint_Implementation(bool bNewSprinting)
+{
+	bIsSprinting = bNewSprinting;
+	ApplyMovementSpeed();
+}
+
+void APPCharacter::ApplyMovementSpeed()
+{
+	GetCharacterMovement()->MaxWalkSpeed = bIsSprinting ? SprintSpeed : WalkSpeed;
+}
+
+void APPCharacter::OnCrouchPressed()
+{
+	if (IsInMinigame()) { return; }
+	Crouch();   // ACharacter::Crouch — networked
+}
+
+void APPCharacter::OnCrouchReleased()
+{
+	UnCrouch();
+}
+
+// ------------------------------------------------------------- interaction ----
 
 void APPCharacter::UpdateFocus()
 {
@@ -199,3 +249,33 @@ void APPCharacter::OnSpectatePrev()
 		PC->ServerCycleSpectate(-1);
 	}
 }
+
+// --------------------------------------------------------- minigame input ----
+
+bool APPCharacter::IsInMinigame() const
+{
+	const APPPlayerState* PS = GetPlayerState<APPPlayerState>();
+	return PS && PS->GetCurrentMinigame() != nullptr;
+}
+
+void APPCharacter::ForwardMinigameInput(FName Action, bool bPressed)
+{
+	if (!IsInMinigame())
+	{
+		return;
+	}
+	if (APPPlayerController* PC = Cast<APPPlayerController>(GetController()))
+	{
+		PC->ServerMinigameInput(Action, bPressed);
+	}
+}
+
+void APPCharacter::OnMG_PrimaryPressed()  { ForwardMinigameInput(TEXT("Primary"), true); }
+void APPCharacter::OnMG_PrimaryReleased() { ForwardMinigameInput(TEXT("Primary"), false); }
+void APPCharacter::OnMG_Left()            { ForwardMinigameInput(TEXT("Left"), true); }
+void APPCharacter::OnMG_Right()           { ForwardMinigameInput(TEXT("Right"), true); }
+void APPCharacter::OnMG_Up()              { ForwardMinigameInput(TEXT("Up"), true); }
+void APPCharacter::OnMG_Down()            { ForwardMinigameInput(TEXT("Down"), true); }
+void APPCharacter::OnMG_PowerUp()         { ForwardMinigameInput(TEXT("Power+"), true); }
+void APPCharacter::OnMG_PowerDown()       { ForwardMinigameInput(TEXT("Power-"), true); }
+void APPCharacter::OnMG_Weapon()          { ForwardMinigameInput(TEXT("Weapon"), true); }
