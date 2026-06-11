@@ -32,21 +32,22 @@ APPBasketCharacter::APPBasketCharacter()
 	SpriteBody->SetRelativeLocationAndRotation(FVector(0.f, 0.f, 0.f), SpriteFacing);
 	SpriteBody->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	// Pivot at the SHOULDER (arms rotate from here); the arm sprites hang straight DOWN from it so the
-	// top of each arm sits right at the shoulder joint (user request 2026-06-11). ArmDropZ ≈ half the
-	// arm sprite's world height, so its top edge lands at the pivot. Tune ShoulderZ/ArmDropZ to taste.
+	// Pivot at the SHOULDER (arms rotate from here). The arm textures are full-canvas layers (same frame
+	// as the body), so each arm sprite is offset by -ShoulderZ FROM the pivot -> at rest it lands back on
+	// the body's origin = perfectly aligned with the body art. Pitching ArmPivot then swings the arm
+	// around the shoulder. Only ±2 in Y separates front/back for draw order.
 	ArmPivot = CreateDefaultSubobject<USceneComponent>(TEXT("ArmPivot"));
 	ArmPivot->SetupAttachment(Body);
-	ArmPivot->SetRelativeLocation(FVector(0.f, 0.f, ShoulderZ)); // shoulder height
+	ArmPivot->SetRelativeLocation(FVector(0.f, 0.f, ShoulderZ)); // shoulder joint height in the art
 
 	SpriteFront = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("SpriteFront"));
 	SpriteFront->SetupAttachment(ArmPivot);
-	SpriteFront->SetRelativeLocationAndRotation(FVector(0.f, -2.f, -ArmDropZ), SpriteFacing); // hangs below shoulder, in front
+	SpriteFront->SetRelativeLocationAndRotation(FVector(0.f, -2.f, -ShoulderZ), SpriteFacing); // back onto the body, in front
 	SpriteFront->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	SpriteBack = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("SpriteBack"));
 	SpriteBack->SetupAttachment(ArmPivot);
-	SpriteBack->SetRelativeLocationAndRotation(FVector(0.f, 2.f, -ArmDropZ), SpriteFacing); // hangs below shoulder, behind
+	SpriteBack->SetRelativeLocationAndRotation(FVector(0.f, 2.f, -ShoulderZ), SpriteFacing); // back onto the body, behind
 	SpriteBack->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	HandPoint = CreateDefaultSubobject<USceneComponent>(TEXT("HandPoint"));
@@ -98,7 +99,7 @@ void APPBasketCharacter::Tick(float DeltaSeconds)
 	}
 
 	// Ease the visual arm raise everywhere (from replicated bCharging). Pitch the shoulder pivot.
-	const float Target = bCharging ? 75.f : 0.f;
+	const float Target = bCharging ? ArmRaisedDeg : 0.f;
 	VisualArmAngle = FMath::FInterpTo(VisualArmAngle, Target, DeltaSeconds, 8.f);
 	if (ArmPivot)
 	{
@@ -200,9 +201,10 @@ void APPBasketCharacter::ApplySprites()
 	// FLIPPED (user request 2026-06-11): all players mirrored vs before. Left team (1&2) now default,
 	// right team (3&4) mirrored. Arms are a bit longer (Z 1.3).
 	const float FlipX = (SpriteVariant <= 2) ? 1.f : -1.f;
+	// Arms are full-canvas layers -> same scale as the body so they overlay 1:1 (no Z stretch).
 	if (SpriteBody)  { SpriteBody->SetSprite(PPVisual::SpriteFromTexture(this, BodyTextures[Idx]));  SpriteBody->SetRelativeScale3D(FVector(FlipX, 1.f, 1.f)); }
-	if (SpriteFront) { SpriteFront->SetSprite(PPVisual::SpriteFromTexture(this, ArmTextures[Idx]));  SpriteFront->SetRelativeScale3D(FVector(FlipX, 1.f, 1.3f)); }
-	if (SpriteBack)  { SpriteBack->SetSprite(PPVisual::SpriteFromTexture(this, BackArmTexture));     SpriteBack->SetRelativeScale3D(FVector(FlipX, 1.f, 1.3f)); }
+	if (SpriteFront) { SpriteFront->SetSprite(PPVisual::SpriteFromTexture(this, ArmTextures[Idx]));  SpriteFront->SetRelativeScale3D(FVector(FlipX, 1.f, 1.f)); }
+	if (SpriteBack)  { SpriteBack->SetSprite(PPVisual::SpriteFromTexture(this, BackArmTexture));     SpriteBack->SetRelativeScale3D(FVector(FlipX, 1.f, 1.f)); }
 }
 
 void APPBasketCharacter::OnRep_Charging()

@@ -292,6 +292,12 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-11** — Basket visual tuning: background +10% (`BackgroundScale` 2.4→2.64); hoops +30%
+  (`APPBasket::HoopScale`) and pushed back in depth VISUAL-only (`VisualDepthOffsetY`, Mouth/scoring
+  unaffected). **Arm rig reworked**: arm textures are full-canvas layers, so at rest the arm sprite is
+  offset −`ShoulderZ` to overlay the body exactly (fixes "arms not where they belong"); arms now scale
+  1:1 with the body (dropped the 1.3 Z stretch); raise angle is a tunable `ArmRaisedDeg` (75→155, "at
+  least double"). `ShoulderZ` is purely the rotation pivot now.
 - **2026-06-11** — Cameras: minigame `GameCamera` and PC-station `MinigameCamera` are now
   **orthographic** (flat 2D look); the FP hub camera stays perspective, so projection auto-switches with
   the view target — no runtime toggling. Zoom knobs: `OrthoWidth` (base, 1800; basket override 1400) and

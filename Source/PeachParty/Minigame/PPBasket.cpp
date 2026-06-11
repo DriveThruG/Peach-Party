@@ -73,7 +73,10 @@ void APPBasket::ApplyFlip()
 {
 	if (Sprite)
 	{
-		Sprite->SetRelativeScale3D(FVector(bFlipX ? -1.f : 1.f, 1.f, 1.f)); // mirror horizontally
+		// HoopScale sizes the hoop (1.3 = +30%); X sign also mirrors it. Push the VISUAL back in depth
+		// (+Y) without moving the scoring Mouth, so the hoop sits behind the players.
+		Sprite->SetRelativeScale3D(FVector(bFlipX ? -HoopScale : HoopScale, HoopScale, HoopScale));
+		Sprite->SetRelativeLocation(FVector(0.f, VisualDepthOffsetY, 0.f));
 	}
 }
 

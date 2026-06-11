@@ -51,7 +51,7 @@ protected:
 	FVector BackgroundOffset = FVector(0.f, 300.f, 110.f);
 
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
-	float BackgroundScale = 2.4f;
+	float BackgroundScale = 2.64f; // +10% (was 2.4)
 
 	// ---- Tunables ----
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")

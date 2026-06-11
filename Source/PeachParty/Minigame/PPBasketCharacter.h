@@ -70,14 +70,15 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
 	FRotator SpriteFacing = FRotator(0.f, 0.f, 0.f);
 
-	/** Shoulder pivot height (arms hinge here). Capsule centre = 0, top ≈ +88. */
+	/** Shoulder pivot height = the Z (relative to the body) of the shoulder joint in the art. The arm
+	 *  sprites are full-canvas layers, so at rest they're offset by -ShoulderZ to sit EXACTLY on the
+	 *  body; this is only the point they ROTATE around. Move it to the shoulder in your art. */
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
-	float ShoulderZ = 58.f;
+	float ShoulderZ = 50.f;
 
-	/** How far the arm sprite hangs below the shoulder pivot ≈ half the arm sprite's world height,
-	 *  so the arm's TOP edge sits at the shoulder joint. Lower this if the arms float above the body. */
+	/** How far the arms swing up while charging (degrees, pitch about the shoulder). Was 75; doubled. */
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
-	float ArmDropZ = 30.f;
+	float ArmRaisedDeg = 155.f;
 
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
