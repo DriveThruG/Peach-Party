@@ -25,12 +25,13 @@ APPBasketBall::APPBasketBall()
 	if (SphereMesh.Succeeded())
 	{
 		Mesh->SetStaticMesh(SphereMesh.Object);
-		Mesh->SetWorldScale3D(FVector(0.4f));
+		Mesh->SetWorldScale3D(FVector(0.25f)); // smaller collision hitbox
 	}
 
 	Sprite = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("Sprite"));
 	Sprite->SetupAttachment(Mesh);
 	Sprite->SetRelativeRotation(FRotator(0.f, 0.f, 0.f)); // Paper2D default faces -Y = the side camera
+	Sprite->SetRelativeScale3D(FVector(1.6f)); // counter the smaller mesh scale so the ball stays its visual size
 	Sprite->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	static ConstructorHelpers::FObjectFinder<UTexture2D> BallTex(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Ball.Ball"));

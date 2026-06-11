@@ -1,6 +1,7 @@
 #include "Core/PPCharacter.h"
 #include "Core/PPPlayerController.h"
 #include "Core/PPPlayerState.h"
+#include "Core/PPGameState.h"
 #include "Core/PPGameMode.h"
 #include "Final/PPWaterProjectile.h"
 #include "Interaction/PPInteractable.h"
@@ -270,9 +271,11 @@ void APPCharacter::ApplyClassStats()
 
 void APPCharacter::OnFirePressed()
 {
-	if (IsInMinigame())
+	// Water guns exist ONLY in the final combat phase (not in the hub / minigames).
+	const APPGameState* GS = GetWorld() ? GetWorld()->GetGameState<APPGameState>() : nullptr;
+	if (IsInMinigame() || !GS || GS->GetCurrentPhase() != EMatchPhase::Final)
 	{
-		return; // no shooting during the 2D minigames
+		return;
 	}
 	ServerFire();
 }
@@ -281,7 +284,9 @@ void APPCharacter::ServerFire_Implementation()
 {
 	APPPlayerState* PS = GetPlayerState<APPPlayerState>();
 	UWorld* World = GetWorld();
-	if (!PS || PS->IsSlipping() || !World || !WaterProjectileClass)
+	const APPGameState* GS = World ? World->GetGameState<APPGameState>() : nullptr;
+	if (!PS || PS->IsSlipping() || !World || !WaterProjectileClass
+		|| !GS || GS->GetCurrentPhase() != EMatchPhase::Final) // authoritative phase gate
 	{
 		return;
 	}

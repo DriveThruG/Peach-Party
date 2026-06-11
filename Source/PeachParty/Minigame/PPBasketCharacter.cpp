@@ -17,7 +17,7 @@ APPBasketCharacter::APPBasketCharacter()
 
 	Body = CreateDefaultSubobject<UCapsuleComponent>(TEXT("Body"));
 	SetRootComponent(Body);
-	Body->InitCapsuleSize(34.f, 88.f);
+	Body->InitCapsuleSize(22.f, 88.f); // thinner hitbox (less bumping); visual is the sprite
 	Body->SetCollisionProfileName(TEXT("PhysicsActor"));
 	Body->SetSimulatePhysics(true);
 	Body->SetCenterOfMass(FVector(0.f, 0.f, -70.f)); // at the feet: pivots + self-rights around the feet
@@ -32,18 +32,19 @@ APPBasketCharacter::APPBasketCharacter()
 	SpriteBody->SetRelativeLocationAndRotation(FVector(0.f, 0.f, 0.f), SpriteFacing);
 	SpriteBody->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
+	// Pivot at the SHOULDER (arms rotate from here); the arm sprites hang down below it.
 	ArmPivot = CreateDefaultSubobject<USceneComponent>(TEXT("ArmPivot"));
 	ArmPivot->SetupAttachment(Body);
-	ArmPivot->SetRelativeLocation(FVector(0.f, 0.f, 5.f)); // lower (arms hang lower on the body)
+	ArmPivot->SetRelativeLocation(FVector(0.f, 0.f, 45.f)); // shoulder height
 
 	SpriteFront = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("SpriteFront"));
 	SpriteFront->SetupAttachment(ArmPivot);
-	SpriteFront->SetRelativeLocationAndRotation(FVector(0.f, -2.f, 0.f), SpriteFacing); // closest to camera
+	SpriteFront->SetRelativeLocationAndRotation(FVector(0.f, -2.f, -35.f), SpriteFacing); // hangs below shoulder, in front
 	SpriteFront->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	SpriteBack = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("SpriteBack"));
 	SpriteBack->SetupAttachment(ArmPivot);
-	SpriteBack->SetRelativeLocationAndRotation(FVector(0.f, 2.f, 0.f), SpriteFacing); // behind
+	SpriteBack->SetRelativeLocationAndRotation(FVector(0.f, 2.f, -35.f), SpriteFacing); // hangs below shoulder, behind
 	SpriteBack->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	HandPoint = CreateDefaultSubobject<USceneComponent>(TEXT("HandPoint"));
@@ -194,9 +195,11 @@ FVector APPBasketCharacter::GetThrowDirection() const
 void APPBasketCharacter::ApplySprites()
 {
 	const int32 Idx = FMath::Clamp(SpriteVariant - 1, 0, 3);
-	if (SpriteBody)  { SpriteBody->SetSprite(PPVisual::SpriteFromTexture(this, BodyTextures[Idx])); }
-	if (SpriteFront) { SpriteFront->SetSprite(PPVisual::SpriteFromTexture(this, ArmTextures[Idx])); }
-	if (SpriteBack)  { SpriteBack->SetSprite(PPVisual::SpriteFromTexture(this, BackArmTexture)); }
+	// Left team (variants 1 & 2) is mirrored so it faces right toward the court. Arms are a bit longer (Z 1.3).
+	const float FlipX = (SpriteVariant <= 2) ? -1.f : 1.f;
+	if (SpriteBody)  { SpriteBody->SetSprite(PPVisual::SpriteFromTexture(this, BodyTextures[Idx]));  SpriteBody->SetRelativeScale3D(FVector(FlipX, 1.f, 1.f)); }
+	if (SpriteFront) { SpriteFront->SetSprite(PPVisual::SpriteFromTexture(this, ArmTextures[Idx]));  SpriteFront->SetRelativeScale3D(FVector(FlipX, 1.f, 1.3f)); }
+	if (SpriteBack)  { SpriteBack->SetSprite(PPVisual::SpriteFromTexture(this, BackArmTexture));     SpriteBack->SetRelativeScale3D(FVector(FlipX, 1.f, 1.3f)); }
 }
 
 void APPBasketCharacter::OnRep_Charging()

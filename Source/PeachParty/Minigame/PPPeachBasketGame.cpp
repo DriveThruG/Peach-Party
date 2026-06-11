@@ -18,8 +18,15 @@ APPPeachBasketGame::APPPeachBasketGame()
 	MinigameType = EMinigameType::PeachBasket;
 	Duration = 45.f; // fallback cap; usually ends earlier on TargetScore
 
-	GameCamera->SetRelativeLocation(FVector(0.f, -620.f, 140.f)); // closer + lower so the background fills the screen
+	GameCamera->SetRelativeLocation(FVector(0.f, -470.f, 115.f)); // closer still
 	GameCamera->SetRelativeRotation(FRotator(-1.f, 90.f, 0.f));   // head-on
+
+	// Lock exposure: the arena floats in dark empty space, so UE's auto-exposure cranks brightness
+	// and blows out the unlit sprites ("overexposed"). Fixing min=max=1 disables eye adaptation.
+	GameCamera->PostProcessSettings.bOverride_AutoExposureMinBrightness = true;
+	GameCamera->PostProcessSettings.AutoExposureMinBrightness = 1.f;
+	GameCamera->PostProcessSettings.bOverride_AutoExposureMaxBrightness = true;
+	GameCamera->PostProcessSettings.AutoExposureMaxBrightness = 1.f;
 
 	BallClass = APPBasketBall::StaticClass();
 	CharacterClass = APPBasketCharacter::StaticClass();
@@ -120,8 +127,8 @@ void APPPeachBasketGame::SpawnPlay()
 
 	// Hoops nearer the centre so they sit inside the background. Both face inward toward the court:
 	// the texture defaults to opening RIGHT, so the LEFT hoop stays default and the RIGHT one mirrors.
-	BasketForP1 = World->SpawnActor<APPBasket>(BasketClass, O + FVector( 520.f, 0.f, 320.f), FRotator::ZeroRotator, P);
-	BasketForP2 = World->SpawnActor<APPBasket>(BasketClass, O + FVector(-520.f, 0.f, 320.f), FRotator::ZeroRotator, P);
+	BasketForP1 = World->SpawnActor<APPBasket>(BasketClass, O + FVector( 440.f, 0.f, 250.f), FRotator::ZeroRotator, P);
+	BasketForP2 = World->SpawnActor<APPBasket>(BasketClass, O + FVector(-440.f, 0.f, 250.f), FRotator::ZeroRotator, P);
 	if (BasketForP1) { BasketForP1->SetScorer(P1); BasketForP1->SetFlipped(true); } // right hoop mirrored to face the court
 	if (BasketForP2) { BasketForP2->SetScorer(P2); }
 
