@@ -1,6 +1,7 @@
 #include "Menu/PPGameInstance.h"
 #include "OnlineSubsystem.h"
 #include "OnlineSessionSettings.h"
+#include "Online/OnlineSessionNames.h"  // SEARCH_PRESENCE et al. (moved out of OnlineSessionSettings.h in UE5)
 #include "GameFramework/PlayerController.h"
 #include "Engine/World.h"
 
