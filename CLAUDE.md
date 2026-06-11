@@ -293,8 +293,9 @@ Read this file first, then before answering:
 ## 11. Changelog
 
 - **2026-06-11** — Build fix: `PPGameInstance.cpp` `C2065 'SEARCH_PRESENCE': undeclared identifier`.
-  In UE5 the session search constants (`SEARCH_PRESENCE`, `SEARCH_LOBBIES`, …) moved out of
-  `OnlineSessionSettings.h` into `Online/OnlineSessionNames.h`; added that include.
+  Adding `Online/OnlineSessionNames.h` did NOT resolve it on UE 5.7 (constant moved/renamed again).
+  Final fix: **removed the `SEARCH_PRESENCE` query block entirely** — it was dead code (project runs on
+  `OnlineSubsystem Null` + LAN where presence is unused), so we no longer depend on the moving constant.
 - **2026-06-10** — Initial scaffold: project files, phases, ready system, team assignment, PC stations.
 - **2026-06-10** — Reworked minigames to per-round reshuffled 1v1s (dropped the `MatchInstance` class);
   GameMode matchmaker + spectator + odd-player bonus match.

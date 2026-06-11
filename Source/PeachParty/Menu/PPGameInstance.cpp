@@ -1,7 +1,6 @@
 #include "Menu/PPGameInstance.h"
 #include "OnlineSubsystem.h"
 #include "OnlineSessionSettings.h"
-#include "Online/OnlineSessionNames.h"  // SEARCH_PRESENCE et al. (moved out of OnlineSessionSettings.h in UE5)
 #include "GameFramework/PlayerController.h"
 #include "Engine/World.h"
 
@@ -74,10 +73,9 @@ void UPPGameInstance::FindGames(bool bLAN)
 	SearchSettings = MakeShareable(new FOnlineSessionSearch());
 	SearchSettings->bIsLanQuery = bLAN;
 	SearchSettings->MaxSearchResults = 50;
-	if (!bLAN)
-	{
-		SearchSettings->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
-	}
+	// NOTE: no SEARCH_PRESENCE query setting — this project uses OnlineSubsystem Null + LAN, where
+	// presence is never used (bUsesPresence=false on host). The SEARCH_PRESENCE constant also moved
+	// between headers across UE versions, so depending on it only adds a fragile build dependency.
 
 	FindHandle = Session->AddOnFindSessionsCompleteDelegate_Handle(
 		FOnFindSessionsCompleteDelegate::CreateUObject(this, &UPPGameInstance::HandleFindComplete));
