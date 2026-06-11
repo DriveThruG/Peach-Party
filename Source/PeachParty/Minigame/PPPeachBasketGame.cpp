@@ -5,6 +5,7 @@
 #include "Minigame/PPVisual.h"
 #include "Core/PPPlayerState.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/BoxComponent.h"
 #include "PaperSpriteComponent.h"
 #include "Engine/Texture2D.h"
 #include "Camera/CameraComponent.h"
@@ -55,27 +56,23 @@ void APPPeachBasketGame::BeginPlay()
 
 void APPPeachBasketGame::BuildArenaGeometry()
 {
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMesh(TEXT("/Engine/BasicShapes/Cube.Cube"));
-
-	auto MakeBlock = [&](const TCHAR* Name, const FVector& Loc, const FVector& Scale) -> UStaticMeshComponent*
+	// Pure collision boxes — invisible in game (no mesh), so only the 2D sprites/background show.
+	auto MakeBox = [&](const TCHAR* Name, const FVector& Loc, const FVector& Extent) -> UBoxComponent*
 	{
-		UStaticMeshComponent* C = CreateDefaultSubobject<UStaticMeshComponent>(Name);
+		UBoxComponent* C = CreateDefaultSubobject<UBoxComponent>(Name);
 		C->SetupAttachment(SceneRoot);
 		C->SetRelativeLocation(Loc);
-		C->SetRelativeScale3D(Scale);
+		C->SetBoxExtent(Extent);
 		C->SetCollisionProfileName(TEXT("BlockAll"));
-		C->SetSimulatePhysics(false);
-		C->SetVisibility(false); // collision only — invisible so the 2D background shows instead
-		if (CubeMesh.Succeeded()) { C->SetStaticMesh(CubeMesh.Object); }
 		return C;
 	};
 
-	Floor = MakeBlock(TEXT("Floor"), FVector(0.f, 0.f, -20.f), FVector(18.f, 9.f, 0.4f));
+	Floor = MakeBox(TEXT("Floor"), FVector(0.f, 0.f, -20.f), FVector(900.f, 450.f, 20.f));
 
-	Walls.Add(MakeBlock(TEXT("WallPosX"), FVector( 900.f, 0.f, 200.f), FVector(0.4f, 9.f, 4.f)));
-	Walls.Add(MakeBlock(TEXT("WallNegX"), FVector(-900.f, 0.f, 200.f), FVector(0.4f, 9.f, 4.f)));
-	Walls.Add(MakeBlock(TEXT("WallPosY"), FVector(0.f,  450.f, 200.f), FVector(18.f, 0.4f, 4.f)));
-	Walls.Add(MakeBlock(TEXT("WallNegY"), FVector(0.f, -450.f, 200.f), FVector(18.f, 0.4f, 4.f)));
+	Walls.Add(MakeBox(TEXT("WallPosX"), FVector( 900.f, 0.f, 200.f), FVector(20.f, 450.f, 200.f)));
+	Walls.Add(MakeBox(TEXT("WallNegX"), FVector(-900.f, 0.f, 200.f), FVector(20.f, 450.f, 200.f)));
+	Walls.Add(MakeBox(TEXT("WallPosY"), FVector(0.f,  450.f, 200.f), FVector(900.f, 20.f, 200.f)));
+	Walls.Add(MakeBox(TEXT("WallNegY"), FVector(0.f, -450.f, 200.f), FVector(900.f, 20.f, 200.f)));
 }
 
 // ----------------------------------------------------------------- spawn ----

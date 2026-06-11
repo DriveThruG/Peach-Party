@@ -310,7 +310,8 @@ void APPGameMode::SpawnMatch(APPPlayerState* TeamAPlayer, APPPlayerState* TeamBP
 	}
 
 	const int32 Slot = AllocateArenaSlot();
-	const FVector ArenaOrigin(Slot * ArenaSpacing, 0.f, 0.f);
+	// Far above the hub so the minigame never overlaps the normal 3D map (the camera follows it there).
+	const FVector ArenaOrigin(Slot * ArenaSpacing, 0.f, 100000.f);
 
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;

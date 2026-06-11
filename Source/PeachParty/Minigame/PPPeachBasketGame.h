@@ -6,6 +6,7 @@
 #include "PPPeachBasketGame.generated.h"
 
 class UStaticMeshComponent;
+class UBoxComponent;
 class UPaperSpriteComponent;
 class UTexture2D;
 class APPBasketBall;
@@ -86,12 +87,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
 	float ThrowSpreadDeg = 4.f;
 
-	// ---- Static arena geometry (this game brings its own floor/walls; arenas are empty space) ----
+	// ---- Invisible collision geometry (floor + walls; the 2D background is the visible court) ----
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
-	UStaticMeshComponent* Floor;
+	UBoxComponent* Floor;
 
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
-	TArray<UStaticMeshComponent*> Walls;
+	TArray<UBoxComponent*> Walls;
 
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
 	TSubclassOf<APPBasketBall> BallClass;
