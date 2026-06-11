@@ -34,7 +34,7 @@ APPBasketCharacter::APPBasketCharacter()
 
 	ArmPivot = CreateDefaultSubobject<USceneComponent>(TEXT("ArmPivot"));
 	ArmPivot->SetupAttachment(Body);
-	ArmPivot->SetRelativeLocation(FVector(0.f, 0.f, 45.f)); // shoulder height
+	ArmPivot->SetRelativeLocation(FVector(0.f, 0.f, 5.f)); // lower (arms hang lower on the body)
 
 	SpriteFront = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("SpriteFront"));
 	SpriteFront->SetupAttachment(ArmPivot);

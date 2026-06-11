@@ -48,10 +48,10 @@ protected:
 
 	/** Tune so the background fills the camera view. */
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
-	FVector BackgroundOffset = FVector(0.f, 300.f, 170.f);
+	FVector BackgroundOffset = FVector(0.f, 300.f, 110.f);
 
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
-	float BackgroundScale = 1.6f;
+	float BackgroundScale = 2.4f;
 
 	// ---- Tunables ----
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
