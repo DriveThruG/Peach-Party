@@ -39,6 +39,9 @@ protected:
 	virtual void OnMinigameStarted() override;
 	virtual void OnMinigameFinished() override;
 
+	/** Scale + centre the background sprite to COVER the whole orthographic view. Exact, not heuristic. */
+	void FitBackgroundToScreen();
+
 	// ---- 2D background (fills the screen behind the action) ----
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
 	UPaperSpriteComponent* Background;
@@ -46,12 +49,14 @@ protected:
 	UPROPERTY()
 	UTexture2D* BackgroundTexture;
 
-	/** Tune so the background fills the camera view. */
+	/** Depth of the background behind the action (+Y = away from the side camera). X/Z are auto-centred
+	 *  on the camera, the scale is auto-fit — so only this depth matters now. */
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
 	FVector BackgroundOffset = FVector(0.f, 300.f, 110.f);
 
+	/** Extra zoom on top of the exact cover-fit (1.0 = just fills; >1 = bleeds past the edges). */
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
-	float BackgroundScale = 2.64f; // +10% (was 2.4)
+	float BackgroundScale = 1.05f;
 
 	// ---- Tunables ----
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")

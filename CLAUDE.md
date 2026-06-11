@@ -292,6 +292,12 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-11** — Background now GUARANTEED full-screen: under the orthographic camera the view shows
+  exactly `OrthoWidth` world-units wide, so `FitBackgroundToScreen()` measures the sprite's real world
+  size (`CalcLocalBounds`, independent of pixels-per-unit) and cover-fits it. `BackgroundScale` is now a
+  bleed margin (1.05), not a guess. Also added GameMode `bDebugSkipToBasket` (EditDefaultsOnly, Debug):
+  PIE polls for ≥2 players then jumps straight into the Peach Basket round — skips lobby/ready for fast
+  visual iteration. `TryDebugAutoStart` + `DebugStartTimer`.
 - **2026-06-11** — Basket visual tuning: background +10% (`BackgroundScale` 2.4→2.64); hoops +30%
   (`APPBasket::HoopScale`) and pushed back in depth VISUAL-only (`VisualDepthOffsetY`, Mouth/scoring
   unaffected). **Arm rig reworked**: arm textures are full-canvas layers, so at rest the arm sprite is

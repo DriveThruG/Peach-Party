@@ -107,8 +107,16 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Placeholder")
 	bool bSpawnPlaceholderLight = true;
 
+	// ---- Debug / fast iteration ----
+	/** PIE shortcut: skip the whole lobby/walk-to-PC/ready dance and drop STRAIGHT into a Peach Basket
+	 *  match as soon as >=2 players have joined. Set false for the normal flow. Great for visual tuning. */
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Debug")
+	bool bDebugSkipToBasket = false;
+
 protected:
 	void BuildPlaceholderHub();
+	void TryDebugAutoStart(); // polls for enough players, then jumps to the minigame phase
+	FTimerHandle DebugStartTimer;
 	// ---- Lobby ----
 	bool AreAllPlayersReady() const;
 	void AssignTeams();

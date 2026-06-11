@@ -54,46 +54,46 @@ APPPeachBasketGame::APPPeachBasketGame()
 void APPPeachBasketGame::BeginPlay()
 {
 	Super::BeginPlay();
+	FitBackgroundToScreen();
+}
 
+void APPPeachBasketGame::FitBackgroundToScreen()
+{
 	if (!Background || !BackgroundTexture)
 	{
 		return;
 	}
 
-	Background->SetRelativeLocation(BackgroundOffset);
-
+	// Build the sprite and centre it on the camera's view axis: camera X is 0 and (with a ~head-on
+	// camera) the screen's vertical centre maps to world Z = camera Z. So sprite centre = screen centre.
 	if (UPaperSprite* S = PPVisual::SpriteFromTexture(this, BackgroundTexture))
 	{
 		Background->SetSprite(S);
 	}
+	const float CamZ = GameCamera ? GameCamera->GetRelativeLocation().Z : 0.f;
+	Background->SetRelativeLocation(FVector(0.f, BackgroundOffset.Y, CamZ));
 
-	FVector2D ViewportSize;
+	// Under ORTHO the view shows EXACTLY OrthoWidth world-units across the screen width, and
+	// OrthoWidth/aspect vertically. So the rectangle we must cover is known exactly.
+	FVector2D Viewport(1920.f, 1080.f);
 	if (GEngine && GEngine->GameViewport)
 	{
-		GEngine->GameViewport->GetViewportSize(ViewportSize);
-
-		const float ScreenAspect =
-			ViewportSize.X / FMath::Max(1.f, ViewportSize.Y);
-
-		const float TextureAspect =
-			(float)BackgroundTexture->GetSizeX() /
-			(float)BackgroundTexture->GetSizeY();
-
-		float ScaleX = BackgroundScale;
-		float ScaleZ = BackgroundScale;
-
-		if (ScreenAspect > TextureAspect)
-		{
-			ScaleX *= ScreenAspect / TextureAspect;
-		}
-		else
-		{
-			ScaleZ *= TextureAspect / ScreenAspect;
-		}
-
-		Background->SetRelativeScale3D(
-			FVector(ScaleX, BackgroundScale, ScaleZ));
+		GEngine->GameViewport->GetViewportSize(Viewport);
 	}
+	const float Aspect = Viewport.X / FMath::Max(1.f, Viewport.Y);
+	const float NeedHalfW = OrthoWidth * 0.5f;
+	const float NeedHalfH = (OrthoWidth / FMath::Max(0.01f, Aspect)) * 0.5f;
+
+	// Native (scale-1) half-size of the sprite in world units, MEASURED — independent of the sprite's
+	// pixels-per-unit. The sprite faces -Y, so its width is along X and its height along Z.
+	const FBoxSphereBounds LB = Background->CalcLocalBounds();
+	const float NativeHalfW = FMath::Max(1.f, LB.BoxExtent.X);
+	const float NativeHalfH = FMath::Max(1.f, LB.BoxExtent.Z);
+
+	// COVER fit: the larger of the two ratios guarantees both dimensions are filled (may crop a little).
+	// BackgroundScale (>=1) is an extra bleed margin so edges never show under rounding/resize.
+	const float Fit = FMath::Max(NeedHalfW / NativeHalfW, NeedHalfH / NativeHalfH) * FMath::Max(1.f, BackgroundScale);
+	Background->SetRelativeScale3D(FVector(Fit, 1.f, Fit));
 }
 
 void APPPeachBasketGame::BuildArenaGeometry()

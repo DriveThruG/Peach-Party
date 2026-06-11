@@ -41,6 +41,29 @@ void APPGameMode::BeginPlay()
 	{
 		BuildPlaceholderHub();
 	}
+
+	if (HasAuthority() && bDebugSkipToBasket)
+	{
+		// Poll until players have joined, then jump straight into the basket round (see TryDebugAutoStart).
+		GetWorldTimerManager().SetTimer(DebugStartTimer, this, &APPGameMode::TryDebugAutoStart, 0.5f, true);
+	}
+}
+
+void APPGameMode::TryDebugAutoStart()
+{
+	APPGameState* GS = GetPPGameState();
+	if (!GS || GS->GetCurrentPhase() != EMatchPhase::Lobby)
+	{
+		GetWorldTimerManager().ClearTimer(DebugStartTimer);
+		return;
+	}
+	if (GS->NumPlayers() < FMath::Max(2, MinPlayersToStart))
+	{
+		return; // still waiting for the PIE clients to connect
+	}
+	GetWorldTimerManager().ClearTimer(DebugStartTimer);
+	AssignTeams();
+	StartMinigamePhase(); // round 0 = Peach Basket
 }
 
 void APPGameMode::BuildPlaceholderHub()
