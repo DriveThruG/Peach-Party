@@ -15,15 +15,20 @@ play 2 short minigames as 1v1s, gain team advantages, then enter a first-person 
 - **Engine:** Unreal Engine **5.7** (user builds/tests on **5.7.4**, Windows + Visual Studio 2022).
 - **Multiplayer:** Listen Server, **2–8 players**.
 - **Repo:** GitHub `DriveThruG/Peach-Party` (branch `main`), SSH push set up from the dev box.
-- **Module:** single runtime module `PeachParty`, flat folders `Core/ Interaction/ Minigame/`.
+- **Module:** single runtime module `PeachParty`, flat folders `Core/ Interaction/ Minigame/ Final/ Menu/`.
 
 ## 2. Dev environment — IMPORTANT constraints
 
 - The working dir (`/home/luis/luis_projekt`, a headless Linux LXC container) has **NO engine and no
   GPU**. Claude **cannot compile or run** here. All code is written against stable UE 5.7 APIs and
   reviewed by hand; the user builds on their Windows machine and pastes back errors.
-- User works from a **GitHub ZIP download** (not a git clone), so pushes only reach them after they
-  re-download. Give them either the re-download step or the exact local one-line edit.
+- **Workflow is git-clone** (HTTPS, since the SSH key only lives on the Linux box). User's clone:
+  `C:\Users\tamar\Downloads\Peach-Party-Main`. After a push, user runs `git pull` in that folder, then
+  right-click `.uproject` → Generate VS Files → open VS → Build. If "no changes appear", verify the
+  folder is the *clone* (`-Main`) not the old ZIP (`-main`); when in doubt, delete+re-clone.
+- Claude **cannot author binary `.uasset`/`.umap` files**. Anything content-side (levels, sprite assets,
+  materials, BPs, UMG widgets) must be created/saved by the user in-editor. Code references content by
+  PATH and resolves it at runtime.
 
 ## 3. Build setup — hard-won gotchas (do not regress these)
 
@@ -169,12 +174,21 @@ with `RoomIndex` 1/2/3). Server-authoritative throughout.
   the PlayerState gates to the **slipping/respawn window only** (no mid-life switching). Applied on
   spawn in `APPCharacter::ApplyClassStats` (movement + ammo) and read live by fire/capture.
 - **Combat:** `APPCharacter::ServerFire` (fire-rate + ammo gated, server aim via `GetBaseAimRotation`)
-  spawns `APPWaterProjectile` (projectile, not hitscan; movement-replicated). On hitting an ENEMY →
-  `Character::ApplyWetness` → `PlayerState::AddWetness`; at 100 → `bIsSlipping`, `MulticastSlip`
-  (lock movement + `BP_OnSlip`), `GameMode::ScheduleRespawn`. Friendly water does nothing.
-- **TODO (designed, not built):** object/gravity-gun pickup-throw (small wetness + knockback + stun,
-  can't shoot while holding), refill stations (reload only there, `RefillSpeedMul`). Real ragdoll
-  needs a skeletal mesh + physics asset.
+  spawns `APPWaterProjectile` (projectile, not hitscan; movement-replicated; **team-coloured via
+  replicated `InstigatorTeam` → `OnRep_Team` tint**; `MulticastImpact` → `BP_OnImpact(Loc, Team)` splash
+  hook). On hitting an ENEMY → `Character::ApplyWetness` → `PlayerState::AddWetness`; at 100 →
+  `bIsSlipping`, `MulticastSlip` (DisableMovement + DisableInput + random launch impulse + `BP_OnSlip`),
+  `GameMode::ScheduleRespawn`. Friendly water does nothing.
+- **Gravity object (`APPGrabbableObject`):** RMB (`Grab` input) traces forward for an object; pick up =
+  physics off, attach to character's `HoldPoint` (in front of camera). RMB again drops; LMB while
+  holding throws (`ServerThrow`, impulse along aim). Fast enemy hit converts impact speed → wetness
+  (clamped, friendly-safe) + knockback. `bIsHolding` replicated; **blocks `ServerFire`**.
+- **Refill stations (`APPRefillStation`):** proximity (`Radius`) ammo top-up on a server timer; no
+  manual reload anywhere else. Runner refills faster (`RefillSpeedMul`). `AddAmmo` clamps to the
+  player's `GetEffectiveStats().AmmoCapacity`.
+- **Caveats:** real ragdoll needs a skeletal mesh + physics asset (slip currently locks + impulses the
+  capsule and triggers `BP_OnSlip`). 3 `APPObjectiveRoom` actors must be placed in-level with
+  `RoomIndex` 1/2/3; `APPRefillStation` and `APPGrabbableObject` actors must be placed in the arena.
 
 ## 7. First-person character (`APPCharacter`)
 
@@ -188,9 +202,21 @@ with `RoomIndex` 1/2/3). Server-authoritative throughout.
 
 ## 8. Config
 
-- `Config/DefaultEngine.ini` — sets `GlobalDefaultGameMode = APPGameMode`, net settings.
-- `Config/DefaultInput.ini` — legacy action/axis mappings (movement, interact, spectate, minigame, MG_*).
-- `Config/DefaultEditorPerProjectUserSettings.ini` — PIE defaults: **listen server, 4 players, one process**.
+- `Config/DefaultEngine.ini` — `GlobalDefaultGameMode=APPGameMode`, `GameInstanceClass=PPGameInstance`,
+  `OnlineSubsystem=Null` (LAN/local), `EditorStartupMap`/`GameDefaultMap=/Game/Maps/PeachPartyHub`.
+- `Config/DefaultInput.ini` — legacy action/axis mappings. Action verbs in use:
+  `Jump, Sprint (toggle), Crouch, Fire (LMB), Grab (RMB), Interact (E), SpectateNext/Prev (←/→),
+  MGPrimary (Space), MGLeft/Right/Up/Down, MGPowerUp/Down, MGWeapon`.
+- `Config/DefaultEditorPerProjectUserSettings.ini` — PIE defaults: **listen server, 4 players, one
+  process**. (Was once eaten by `.gitignore` — see §3.6.)
+- **Modules**: `Source/PeachParty/PeachParty.Build.cs` declares `Paper2D, OnlineSubsystem,
+  OnlineSubsystemUtils`; `.uproject` enables `EnhancedInput, Paper2D, OnlineSubsystemNull`.
+
+### Levels the user must create in-editor (Claude can't author `.umap`)
+- `/Game/Maps/PeachPartyHub` — the empty default map. Runtime-spawned placeholder floor + 8 PC stations
+  cover it for now. PIE errors out until this asset exists at that exact path.
+- A final arena level. Must contain 3 `APPObjectiveRoom` actors (`RoomIndex` 1, 2, 3) with
+  attacker/defender spawn points, plus `APPRefillStation` and `APPGrabbableObject` actors as desired.
 
 ### Placeholder test hub (runtime-built — no level art needed)
 `APPGameMode::BuildPlaceholderHub()` (server, `BeginPlay`, gated by `bSpawnPlaceholderHub`) spawns a
@@ -203,10 +229,41 @@ lighting otherwise "competes" with it; only enable on a truly empty level).
 
 ## 9. Current state
 
-- ✅ Compiles + links on UE 5.7.4 (user confirmed project opens). Not yet play-tested by the user.
-- ✅ Implemented: phases, ready/teams, full minigame matchmaker, both minigames' gameplay, FP character.
-- 🔲 Stubs / TODO: **Reward phase** (grant winning team a Final-phase advantage), **Final first-person
-  combat phase** (weapons, combat rules), HUD/UMG, real art (currently engine `BasicShapes` placeholders).
+**Last verified compile:** 2026-06-11, before the latest combat round. Everything written after that
+(grab/throw, refill stations, team-coloured water + splash, fuller slip) is **UNVERIFIED** — the user
+will paste compile errors next session. Their explicit ask: *"Fixe einfach alles was du findest, falls
+kompilierfehler auftauchen schicke ich dir das."*
+
+- ✅ Code backbone for ALL phases: Lobby/Ready/Teams → Minigame matchmaker (basket + artillery) →
+  Reward selection → Final phase (frontline 3-room capture, classes, water-gun combat, grab/throw,
+  refill stations, slip+respawn).
+- ✅ FP character (walk/sprint/jump/crouch + Fire/Grab/Interact/Spectate/MG inputs).
+- ✅ Main menu plumbing: `Menu/PPGameInstance` (HostGame/FindGames/JoinGameByIndex via
+  `OnlineSubsystem Null` / LAN), `FPPServerEntry`, BlueprintAssignable delegates for UMG to bind.
+- 🔲 **User must do in-editor** (Claude can't touch `.uasset`/`.umap`):
+  - Create `/Game/Maps/PeachPartyHub` (the empty default level).
+  - Build the final arena level + place 3 `APPObjectiveRoom` (RoomIndex 1/2/3 with spawn points),
+    `APPRefillStation` and `APPGrabbableObject` actors.
+  - Build UMG widgets bound to replicated `APPGameState` data: ready count / score / round-result
+    (hook `BP_OnRoundResult`) / reward-pick menu / main menu (server list via `PPGameInstance`).
+  - Optional cosmetic BPs: `BP_OnImpact(Loc, Team)` splash, `BP_OnSlip` reaction.
+- 🔲 **Known design gaps / not built:** real ragdoll (needs skeletal mesh + physics asset), proper
+  HUD, late-joiner / disconnect handling, end-of-match screen, global-timeout race in `OnRoundComplete`.
+
+## 9b. Where things live (file map)
+
+```
+Source/PeachParty/
+  Core/           PPTypes, PPGameMode, PPGameState, PPPlayerState, PPPlayerController, PPCharacter, PPPlaceholderBlock
+  Interaction/    PPInteractable (interface), PPPCStation
+  Minigame/       PPVisual.h, PPMinigameBase,
+                  PPPeachBasketGame + PPBasketBall + PPBasketCharacter + PPBasket,
+                  PPPeachArtilleryGame + PPTank + PPProjectile + PPArtilleryTypes.h
+  Final/          PPClassTypes.h, PPRewardTypes.h,
+                  PPWaterProjectile, PPObjectiveRoom,
+                  PPGrabbableObject, PPRefillStation
+  Menu/           PPGameInstance (LAN host/find/join)
+```
 
 ## 10. Conventions
 
@@ -216,6 +273,22 @@ lighting otherwise "competes" with it; only enable on a truly empty level).
 - Prefer simple/stable over flexible (user's explicit priority). Proximity checks over collision
   channels; kinematic over physics where turn-based; spatial separation over channel filtering.
 - After meaningful changes: `git add -A && git commit && git push` (commit trailer: Co-Authored-By Claude).
+
+## 10b. Next-session start checklist
+
+Read this file first, then before answering:
+
+1. **Check what user is asking.** Likely paths: (a) "here are my compile errors" → fix in the C++ files
+   listed in §9b, push, ask them to pull+rebuild; (b) "PIE crashes / something doesn't work in-game" →
+   ask for the exact log line + repro steps; (c) "how do I make the UMG widget for X" → click-by-click
+   guide referencing the replicated GameState fields in §4/§6/§6b.
+2. **Don't claim Final/Reward/Menu are TODO** — they're built (unverified). If errors come, the file
+   to edit is named in the error.
+3. **Don't try to compile.** No engine on this box. Push changes and let the user build.
+4. **Repo:** `git@github.com:DriveThruG/Peach-Party.git` (SSH from this box). User pulls via HTTPS.
+   Standard close-out: `git add -A && git commit -m "…" && git push origin main`.
+5. **Honour the build gotchas in §3** — V6, `PublicIncludePaths.Add(ModuleDirectory)`, `bUseUnity=false`,
+   and **no member-shadow names** (warnings-as-errors).
 
 ## 11. Changelog
 
@@ -274,3 +347,7 @@ lighting otherwise "competes" with it; only enable on a truly empty level).
   Code now references those TEXTURES by exact path and builds Paper2D sprites from them at runtime
   (`PPVisual::SpriteFromTexture`, **editor-only** `InitializeSprite` — fine for PIE, needs real sprite
   assets for a packaged build). No hand-created sprites needed from the user.
+- **2026-06-11** — Session handoff: rewrote §1, §2, §6b, §8, §9 to reflect actual state (Final +
+  Reward + Menu are built, no longer "TODO"); added §9b file map and §10b next-session checklist.
+  Last verified compile predates the combat round (grab/throw, refill, team-coloured water/splash,
+  fuller slip) — user will paste compile errors in the next session.
