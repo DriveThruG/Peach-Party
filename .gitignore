@@ -21,8 +21,8 @@ Builds/
 *.sdf
 *.opendb
 
-# UE per-user config
-Config/*Editor*User*.ini
+# UE per-user config (auto-generated, lives under Saved/) — but NOT the committed
+# Config/Default*.ini project defaults.
 Saved/Config/
 
 # OS noise

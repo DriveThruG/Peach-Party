@@ -84,6 +84,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Placeholder")
 	int32 NumPlaceholderStations = 4;
 
+	/** Off by default: most levels already have lighting, so spawning one here just competes.
+	 *  Turn on ONLY if you run on a truly empty level. */
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Placeholder")
+	bool bSpawnPlaceholderLight = false;
+
 protected:
 	void BuildPlaceholderHub();
 	// ---- Lobby ----

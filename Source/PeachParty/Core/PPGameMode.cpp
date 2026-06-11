@@ -64,15 +64,19 @@ void APPGameMode::BuildPlaceholderHub()
 		World->SpawnActor<APPPCStation>(APPPCStation::StaticClass(), Loc, FRotator::ZeroRotator, P);
 	}
 
-	// A directional light so an empty level isn't pitch black (replicated to clients).
-	if (ADirectionalLight* Light = World->SpawnActor<ADirectionalLight>(
-			ADirectionalLight::StaticClass(), FVector(0.f, 0.f, 2000.f), FRotator(-55.f, -60.f, 0.f), P))
+	// Optional light — OFF by default. Levels usually have their own lighting; spawning one here
+	// "competes" with it. Only enable for a genuinely empty level (bSpawnPlaceholderLight).
+	if (bSpawnPlaceholderLight)
 	{
-		Light->SetReplicates(true);
-		if (Light->GetLightComponent())
+		if (ADirectionalLight* Light = World->SpawnActor<ADirectionalLight>(
+				ADirectionalLight::StaticClass(), FVector(0.f, 0.f, 2000.f), FRotator(-55.f, -60.f, 0.f), P))
 		{
-			Light->GetLightComponent()->SetMobility(EComponentMobility::Movable);
-			Light->GetLightComponent()->SetIntensity(4.f);
+			Light->SetReplicates(true);
+			if (Light->GetLightComponent())
+			{
+				Light->GetLightComponent()->SetMobility(EComponentMobility::Movable);
+				Light->GetLightComponent()->SetIntensity(4.f);
+			}
 		}
 	}
 }

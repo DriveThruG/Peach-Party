@@ -42,6 +42,10 @@ These cost several build rounds. They live in `Source/*.Target.cs` and `Source/P
    own classes). Use `In`-prefixed names (`InOwner`, `InTeam`) or distinct names (`Outcome`).
 5. The PCH/heap "Low on memory" kill loop is **environmental** (machine out of RAM), not code — reboot,
    close apps, only run VS, optionally grow the Windows pagefile.
+6. **`.gitignore` must not eat committed configs.** A `Config/*Editor*User*.ini` pattern silently
+   ignored `Config/DefaultEditorPerProjectUserSettings.ini` (PIE play settings) so it never reached the
+   user. Only `Saved/Config/` is per-user; everything in `Config/Default*.ini` is a committed default.
+   When a file "doesn't arrive", run `git check-ignore -v <file>`.
 
 ## 4. Architecture
 
@@ -137,10 +141,12 @@ Verbs: `Primary, Left, Right, Up, Down, Power+, Power-, Weapon`.
 
 ### Placeholder test hub (runtime-built — no level art needed)
 `APPGameMode::BuildPlaceholderHub()` (server, `BeginPlay`, gated by `bSpawnPlaceholderHub`) spawns a
-floor (`APPPlaceholderBlock`), a row of `NumPlaceholderStations` PC stations, and a directional light.
+floor (`APPPlaceholderBlock`) and a row of `NumPlaceholderStations` PC stations.
 `ChoosePlayerStart_Implementation` spawns spread-out `APlayerStart`s when the level has none. All
 placeholder geometry uses engine `BasicShapes`. Turn `bSpawnPlaceholderHub=false` once a real level
-exists. (Claude can't author `.umap` files from the headless box, hence runtime-spawning.)
+exists. (Claude can't author/delete `.umap` files from the headless box, hence runtime-spawning.)
+An optional directional light is gated by `bSpawnPlaceholderLight` (**default false** — the level's own
+lighting otherwise "competes" with it; only enable on a truly empty level).
 
 ## 9. Current state
 
@@ -173,3 +179,6 @@ exists. (Claude can't author `.umap` files from the headless box, hence runtime-
   owner-hidden), PC stations get desk+screen cubes, runtime placeholder hub (floor/stations/light) +
   spread player spawns via `ChoosePlayerStart`. Sprint changed to a toggle (fixes W+Shift+Space
   jump jam from keyboard ghosting). New class `APPPlaceholderBlock`.
+- **2026-06-11** — Fixed `.gitignore` eating `Config/DefaultEditorPerProjectUserSettings.ini` (PIE
+  settings never reached the user). Placeholder light now OFF by default (`bSpawnPlaceholderLight`)
+  to stop competing with the level's own lights.
