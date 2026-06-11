@@ -2,8 +2,11 @@
 #include "Minigame/PPBasketBall.h"
 #include "Minigame/PPBasketCharacter.h"
 #include "Minigame/PPBasket.h"
+#include "Minigame/PPVisual.h"
 #include "Core/PPPlayerState.h"
 #include "Components/StaticMeshComponent.h"
+#include "PaperSpriteComponent.h"
+#include "Engine/Texture2D.h"
 #include "Camera/CameraComponent.h"
 #include "Engine/World.h"
 #include "UObject/ConstructorHelpers.h"
@@ -22,6 +25,32 @@ APPPeachBasketGame::APPPeachBasketGame()
 	BasketClass = APPBasket::StaticClass();
 
 	BuildArenaGeometry();
+
+	// Full-screen 2D background behind the action (built from the Background texture in BeginPlay).
+	Background = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("Background"));
+	Background->SetupAttachment(SceneRoot);
+	Background->SetRelativeLocation(BackgroundOffset);
+	Background->SetRelativeRotation(FRotator(0.f, 90.f, 0.f)); // face the camera; tune if edge-on
+	Background->SetRelativeScale3D(FVector(BackgroundScale));
+	Background->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Background->SetTranslucentSortPriority(-100); // draw behind everything
+
+	static ConstructorHelpers::FObjectFinder<UTexture2D> BgTex(TEXT("/Game/PeachParty/Minigames/BasketPeach/Graphics/Background.Background"));
+	BackgroundTexture = BgTex.Object;
+}
+
+void APPPeachBasketGame::BeginPlay()
+{
+	Super::BeginPlay();
+	if (Background)
+	{
+		Background->SetRelativeLocation(BackgroundOffset);
+		Background->SetRelativeScale3D(FVector(BackgroundScale));
+		if (UPaperSprite* S = PPVisual::SpriteFromTexture(this, BackgroundTexture))
+		{
+			Background->SetSprite(S);
+		}
+	}
 }
 
 void APPPeachBasketGame::BuildArenaGeometry()
@@ -36,6 +65,7 @@ void APPPeachBasketGame::BuildArenaGeometry()
 		C->SetRelativeScale3D(Scale);
 		C->SetCollisionProfileName(TEXT("BlockAll"));
 		C->SetSimulatePhysics(false);
+		C->SetVisibility(false); // collision only — invisible so the 2D background shows instead
 		if (CubeMesh.Succeeded()) { C->SetStaticMesh(CubeMesh.Object); }
 		return C;
 	};

@@ -6,6 +6,8 @@
 #include "PPPeachBasketGame.generated.h"
 
 class UStaticMeshComponent;
+class UPaperSpriteComponent;
+class UTexture2D;
 class APPBasketBall;
 class APPBasketCharacter;
 class APPBasket;
@@ -32,8 +34,23 @@ public:
 	virtual void HandleInput(APPPlayerState* Player, FName Action, bool bPressed) override;
 
 protected:
+	virtual void BeginPlay() override;
 	virtual void OnMinigameStarted() override;
 	virtual void OnMinigameFinished() override;
+
+	// ---- 2D background (fills the screen behind the action) ----
+	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
+	UPaperSpriteComponent* Background;
+
+	UPROPERTY()
+	UTexture2D* BackgroundTexture;
+
+	/** Tune so the background fills the camera view. */
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
+	FVector BackgroundOffset = FVector(0.f, 400.f, 250.f);
+
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
+	float BackgroundScale = 2.0f;
 
 	// ---- Tunables ----
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")

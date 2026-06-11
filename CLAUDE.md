@@ -220,6 +220,9 @@ lighting otherwise "competes" with it; only enable on a truly empty level).
 - **2026-06-11** — Paper2D enabled; Peach Basket switched to real sprites referencing the user's
   imported textures by path (body + 2 arms layered, ball, hoop). Physics locked to X-Z plane (2D side
   view), chars face camera, 4 art variants via replicated `SpriteVariant`.
+- **2026-06-11** — Basket arena: hid the floor/walls (collision-only, `SetVisibility(false)`) so the
+  visible "box" is gone; added a full-screen `Background` Paper2D sprite (from `Background.uasset`)
+  behind the action (`BackgroundOffset`/`BackgroundScale` tunable). Aiming for the reference court look.
 - **2026-06-11** — User committed their basket textures to the repo at
   `Content/PeachParty/Minigames/BasketPeach/Graphics/` (Texture2D `.uasset`, incl. the `PLayer01_Arm`
   typo). Switched to a **git-clone workflow** (Windows, HTTPS — SSH key only existed on the Linux box).
