@@ -43,6 +43,7 @@ APPPCStation::APPPCStation()
 	// OrthoWidth frames the screen mesh (~140 wide); raise it to show more around the monitor.
 	MinigameCamera->SetProjectionMode(ECameraProjectionMode::Orthographic);
 	MinigameCamera->SetOrthoWidth(SeatedOrthoWidth);
+	MinigameCamera->SetConstraintAspectRatio(false); // fill the whole viewport, no letterbox bars
 
 	SeatPoint = CreateDefaultSubobject<USceneComponent>(TEXT("SeatPoint"));
 	SeatPoint->SetupAttachment(SceneRoot);

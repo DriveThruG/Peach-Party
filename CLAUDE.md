@@ -292,6 +292,13 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-11** — Full-screen for real: the basket render was letterboxed (camera in a centred
+  rectangle, HUD text full-width). Fix: `SetConstraintAspectRatio(false)` on both ortho cameras
+  (GameCamera + station MinigameCamera) so the view fills the whole viewport. Background fit is now
+  LIVE (`ScaleBackgroundToView()` each Tick, reads the camera's real `OrthoWidth`) so it self-corrects
+  on any resolution/resize. Also `bSpawnPlaceholderLight` default → false (kills the "Multiple
+  directional lights competing" warning; Paper2D sprites are unlit). If gray borders REMAIN after this,
+  it's a windowed-PIE thing → play fullscreen / set the PIE window to the monitor resolution.
 - **2026-06-11** — Background now GUARANTEED full-screen: under the orthographic camera the view shows
   exactly `OrthoWidth` world-units wide, so `FitBackgroundToScreen()` measures the sprite's real world
   size (`CalcLocalBounds`, independent of pixels-per-unit) and cover-fits it. `BackgroundScale` is now a

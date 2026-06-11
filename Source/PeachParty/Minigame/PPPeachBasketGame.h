@@ -39,8 +39,9 @@ protected:
 	virtual void OnMinigameStarted() override;
 	virtual void OnMinigameFinished() override;
 
-	/** Scale + centre the background sprite to COVER the whole orthographic view. Exact, not heuristic. */
-	void FitBackgroundToScreen();
+	/** Scale + centre the background sprite to COVER the whole orthographic view. Exact, not heuristic.
+	 *  Cheap math only (no allocations) — safe to call every tick so it self-corrects on resize. */
+	void ScaleBackgroundToView();
 
 	// ---- 2D background (fills the screen behind the action) ----
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")

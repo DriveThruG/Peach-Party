@@ -26,6 +26,9 @@ APPMinigameBase::APPMinigameBase()
 	// camera stays perspective, so the view auto-switches projection when this becomes the view target.
 	GameCamera->SetProjectionMode(ECameraProjectionMode::Orthographic);
 	GameCamera->SetOrthoWidth(OrthoWidth);
+	// Never letterbox: fill the WHOLE viewport (no pillar/letterbox bars). Critical so the background
+	// covers the full screen instead of a centred rectangle.
+	GameCamera->SetConstraintAspectRatio(false);
 }
 
 void APPMinigameBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

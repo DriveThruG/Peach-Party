@@ -102,10 +102,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Placeholder")
 	int32 NumPlaceholderStations = 8; // one per max player so everyone can sit
 
-	/** On for the empty PeachPartyHub level (which has no light of its own). Set false again if you
-	 *  run on a level that already has lighting, otherwise the two lights compete. */
+	/** OFF: the level already has its own directional light, so spawning another triggers the
+	 *  "Multiple directional lights are competing…" warning. Paper2D minigame sprites are unlit anyway.
+	 *  Turn on only for a genuinely empty, lightless level. */
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Placeholder")
-	bool bSpawnPlaceholderLight = true;
+	bool bSpawnPlaceholderLight = false;
 
 	// ---- Debug / fast iteration ----
 	/** PIE shortcut: skip the whole lobby/walk-to-PC/ready dance and drop STRAIGHT into a Peach Basket

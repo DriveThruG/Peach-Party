@@ -54,24 +54,32 @@ APPPeachBasketGame::APPPeachBasketGame()
 void APPPeachBasketGame::BeginPlay()
 {
 	Super::BeginPlay();
-	FitBackgroundToScreen();
+
+	// Build the sprite ONCE here; the per-frame ScaleBackgroundToView() only does cheap scale/position math.
+	if (Background && BackgroundTexture)
+	{
+		if (UPaperSprite* S = PPVisual::SpriteFromTexture(this, BackgroundTexture))
+		{
+			Background->SetSprite(S);
+		}
+	}
+	ScaleBackgroundToView();
 }
 
-void APPPeachBasketGame::FitBackgroundToScreen()
+void APPPeachBasketGame::ScaleBackgroundToView()
 {
-	if (!Background || !BackgroundTexture)
+	if (!Background || !GameCamera)
 	{
 		return;
 	}
 
-	// Build the sprite and centre it on the camera's view axis: camera X is 0 and (with a ~head-on
-	// camera) the screen's vertical centre maps to world Z = camera Z. So sprite centre = screen centre.
-	if (UPaperSprite* S = PPVisual::SpriteFromTexture(this, BackgroundTexture))
-	{
-		Background->SetSprite(S);
-	}
-	const float CamZ = GameCamera ? (float)GameCamera->GetRelativeLocation().Z : 0.f;
+	// Centre on the camera's view axis: camera X is 0 and (with a ~head-on camera) the screen's vertical
+	// centre maps to world Z = camera Z. So sprite centre = screen centre.
+	const float CamZ = (float)GameCamera->GetRelativeLocation().Z;
 	Background->SetRelativeLocation(FVector(0.f, BackgroundOffset.Y, CamZ));
+
+	// Use the camera's REAL ortho width (can't desync from a stored copy).
+	const float OrthoW = GameCamera->OrthoWidth;
 
 	// Under ORTHO the view shows EXACTLY OrthoWidth world-units across the screen width, and
 	// OrthoWidth/aspect vertically. So the rectangle we must cover is known exactly.
@@ -84,8 +92,8 @@ void APPPeachBasketGame::FitBackgroundToScreen()
 	const float VpX = (float)Viewport.X;
 	const float VpY = (float)Viewport.Y;
 	const float Aspect = VpX / FMath::Max(1.f, VpY);
-	const float NeedHalfW = OrthoWidth * 0.5f;
-	const float NeedHalfH = (OrthoWidth / FMath::Max(0.01f, Aspect)) * 0.5f;
+	const float NeedHalfW = OrthoW * 0.5f;
+	const float NeedHalfH = (OrthoW / FMath::Max(0.01f, Aspect)) * 0.5f;
 
 	// Native (scale-1) half-size of the sprite in world units, MEASURED — independent of the sprite's
 	// pixels-per-unit. The sprite faces -Y, so its width is along X and its height along Z.
@@ -186,6 +194,8 @@ void APPPeachBasketGame::SpawnPlay()
 void APPPeachBasketGame::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+
+	ScaleBackgroundToView(); // keep the background filling the screen (self-corrects on resize)
 
 	if (HasAuthority() && !IsFinished())
 	{
