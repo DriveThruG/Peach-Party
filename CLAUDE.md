@@ -182,3 +182,6 @@ lighting otherwise "competes" with it; only enable on a truly empty level).
 - **2026-06-11** — Fixed `.gitignore` eating `Config/DefaultEditorPerProjectUserSettings.ini` (PIE
   settings never reached the user). Placeholder light now OFF by default (`bSpawnPlaceholderLight`)
   to stop competing with the level's own lights.
+- **2026-06-11** — Default map set to `/Game/Maps/PeachPartyHub` (user must create that empty level
+  once in-editor — Claude can't author `.umap`). Placeholder light back ON by default for that empty
+  level. NOTE: if `PeachPartyHub` doesn't exist yet, PIE will error until it's created at that path.
