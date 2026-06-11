@@ -6,6 +6,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "UObject/ConstructorHelpers.h"
 #include "Engine/World.h"
 #include "Net/UnrealNetwork.h"
 
@@ -29,7 +31,20 @@ APPCharacter::APPCharacter()
 	FirstPersonCamera->SetRelativeLocation(FVector(0.f, 0.f, 64.f)); // ~eye height
 	FirstPersonCamera->bUsePawnControlRotation = true;
 
-	// Don't draw our own body to ourselves (avoids first-person clipping when a mesh is assigned).
+	// Placeholder body (cylinder) so OTHER players can see you; hidden for your own first-person view.
+	BodyMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh"));
+	BodyMesh->SetupAttachment(GetCapsuleComponent());
+	BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // the capsule handles collision
+	BodyMesh->SetOwnerNoSee(true);
+	BodyMesh->SetRelativeLocation(FVector(0.f, 0.f, -88.f)); // base at capsule bottom
+	BodyMesh->SetRelativeScale3D(FVector(0.9f, 0.9f, 1.76f));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylMesh(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+	if (CylMesh.Succeeded())
+	{
+		BodyMesh->SetStaticMesh(CylMesh.Object);
+	}
+
+	// Don't draw the (unused) skeletal mesh to ourselves either.
 	if (GetMesh())
 	{
 		GetMesh()->SetOwnerNoSee(true);
@@ -67,8 +82,7 @@ void APPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	// Movement actions.
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &APPCharacter::OnJumpPressed);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &APPCharacter::OnJumpReleased);
-	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &APPCharacter::StartSprint);
-	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &APPCharacter::StopSprint);
+	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &APPCharacter::ToggleSprint);
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &APPCharacter::OnCrouchPressed);
 	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &APPCharacter::OnCrouchReleased);
 
@@ -131,19 +145,12 @@ void APPCharacter::OnJumpReleased()
 	StopJumping();
 }
 
-void APPCharacter::StartSprint()
+void APPCharacter::ToggleSprint()
 {
 	if (IsInMinigame()) { return; }
-	bIsSprinting = true;
-	ApplyMovementSpeed();   // responsive on the owning client
-	ServerSetSprint(true);  // authoritative on the server
-}
-
-void APPCharacter::StopSprint()
-{
-	bIsSprinting = false;
-	ApplyMovementSpeed();
-	ServerSetSprint(false);
+	bIsSprinting = !bIsSprinting;
+	ApplyMovementSpeed();          // responsive on the owning client
+	ServerSetSprint(bIsSprinting); // authoritative on the server
 }
 
 void APPCharacter::ServerSetSprint_Implementation(bool bNewSprinting)

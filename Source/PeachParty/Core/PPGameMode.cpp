@@ -6,7 +6,12 @@
 #include "Minigame/PPMinigameBase.h"
 #include "Minigame/PPPeachBasketGame.h"
 #include "Minigame/PPPeachArtilleryGame.h"
+#include "Interaction/PPPCStation.h"
+#include "Core/PPPlaceholderBlock.h"
 #include "Engine/World.h"
+#include "Engine/DirectionalLight.h"
+#include "Components/LightComponent.h"
+#include "GameFramework/PlayerStart.h"
 #include "TimerManager.h"
 #include "GameFramework/PlayerState.h"
 
@@ -24,6 +29,76 @@ APPGameMode::APPGameMode()
 APPGameState* APPGameMode::GetPPGameState() const
 {
 	return GetWorld() ? GetWorld()->GetGameState<APPGameState>() : nullptr;
+}
+
+void APPGameMode::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (HasAuthority() && bSpawnPlaceholderHub)
+	{
+		BuildPlaceholderHub();
+	}
+}
+
+void APPGameMode::BuildPlaceholderHub()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	FActorSpawnParameters P;
+	P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	// Floor: a big flat block centred on the origin (scale carried by the spawn transform).
+	const FTransform FloorXform(FRotator::ZeroRotator, FVector(0.f, 0.f, -25.f), FVector(60.f, 60.f, 0.5f));
+	World->SpawnActor<APPPlaceholderBlock>(APPPlaceholderBlock::StaticClass(), FloorXform, P);
+
+	// A row of PC stations to walk up to and ready up at. Seat side faces -X (toward spawn).
+	for (int32 i = 0; i < NumPlaceholderStations; ++i)
+	{
+		const float Y = (i - (NumPlaceholderStations - 1) * 0.5f) * 220.f;
+		const FVector Loc(450.f, Y, 0.f);
+		World->SpawnActor<APPPCStation>(APPPCStation::StaticClass(), Loc, FRotator::ZeroRotator, P);
+	}
+
+	// A directional light so an empty level isn't pitch black (replicated to clients).
+	if (ADirectionalLight* Light = World->SpawnActor<ADirectionalLight>(
+			ADirectionalLight::StaticClass(), FVector(0.f, 0.f, 2000.f), FRotator(-55.f, -60.f, 0.f), P))
+	{
+		Light->SetReplicates(true);
+		if (Light->GetLightComponent())
+		{
+			Light->GetLightComponent()->SetMobility(EComponentMobility::Movable);
+			Light->GetLightComponent()->SetIntensity(4.f);
+		}
+	}
+}
+
+AActor* APPGameMode::ChoosePlayerStart_Implementation(AController* Player)
+{
+	// Prefer real PlayerStarts placed in the level.
+	if (AActor* Existing = Super::ChoosePlayerStart_Implementation(Player))
+	{
+		return Existing;
+	}
+
+	// None in the level: spawn a spread-out placeholder start near the origin, facing the PCs (+X).
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return nullptr;
+	}
+
+	const int32 Index = PlayerSpawnCounter++;
+	const float Y = (Index - 3.5f) * 150.f; // spread up to 8 players along Y
+	const FVector Loc(-250.f, Y, 110.f);
+
+	FActorSpawnParameters P;
+	P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	return World->SpawnActor<APlayerStart>(APlayerStart::StaticClass(), Loc, FRotator::ZeroRotator, P);
 }
 
 void APPGameMode::PostLogin(APlayerController* NewPlayer)

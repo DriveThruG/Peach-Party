@@ -29,8 +29,12 @@ class PEACHPARTY_API APPGameMode : public AGameModeBase
 public:
 	APPGameMode();
 
+	virtual void BeginPlay() override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
+
+	/** Spread players out when the level has no PlayerStarts (placeholder hub). */
+	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
 	/** Called by PC stations whenever a player's ready flag flips during Lobby. */
 	void NotifyReadyStateChanged();
@@ -73,7 +77,15 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Rules")
 	TSubclassOf<APPMinigameBase> ArtilleryGameClass;
 
+	// ---- Placeholder test hub (built at runtime so the project is playable with no level art) ----
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Placeholder")
+	bool bSpawnPlaceholderHub = true;
+
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Placeholder")
+	int32 NumPlaceholderStations = 4;
+
 protected:
+	void BuildPlaceholderHub();
 	// ---- Lobby ----
 	bool AreAllPlayersReady() const;
 	void AssignTeams();
@@ -105,4 +117,7 @@ protected:
 	TArray<bool> ArenaSlotInUse;			// recycled arena slots keep world coords bounded
 	bool bMinigamePhaseResolved = false;
 	bool bTimedOut = false;
+
+	/** Counts spawned players to spread them out across placeholder spawn points. */
+	int32 PlayerSpawnCounter = 0;
 };

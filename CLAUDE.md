@@ -121,16 +121,26 @@ Verbs: `Primary, Left, Right, Up, Down, Power+, Power-, Weapon`.
 
 ## 7. First-person character (`APPCharacter`)
 
-- Eye-height `FirstPersonCamera`, body yaws with controller. WASD + mouse, **Shift** sprint
-  (replicated flag + `ServerSetSprint`), **Space** jump, **C/Ctrl** crouch. All networked via
+- Eye-height `FirstPersonCamera`, body yaws with controller. WASD + mouse, **Shift** = **toggle**
+  sprint (replicated flag + `ServerSetSprint`), **Space** jump, **C/Ctrl** crouch. All networked via
   `CharacterMovementComponent` (server-authoritative + client prediction). Capsule blocks geometry.
+- Sprint is a TOGGLE (tap, not hold) on purpose: holding W+Shift+Space jams on many keyboards
+  (3-key ghosting) and the jump won't register. Toggle removes Shift from the held set.
 - Space is context-split: jump in hub, minigame "Primary" while playing (gated by `IsInMinigame()`).
+- `BodyMesh` = placeholder cylinder, `SetOwnerNoSee(true)` so others see you but your own FP view doesn't.
 
 ## 8. Config
 
 - `Config/DefaultEngine.ini` — sets `GlobalDefaultGameMode = APPGameMode`, net settings.
 - `Config/DefaultInput.ini` — legacy action/axis mappings (movement, interact, spectate, minigame, MG_*).
 - `Config/DefaultEditorPerProjectUserSettings.ini` — PIE defaults: **listen server, 4 players, one process**.
+
+### Placeholder test hub (runtime-built — no level art needed)
+`APPGameMode::BuildPlaceholderHub()` (server, `BeginPlay`, gated by `bSpawnPlaceholderHub`) spawns a
+floor (`APPPlaceholderBlock`), a row of `NumPlaceholderStations` PC stations, and a directional light.
+`ChoosePlayerStart_Implementation` spawns spread-out `APlayerStart`s when the level has none. All
+placeholder geometry uses engine `BasicShapes`. Turn `bSpawnPlaceholderHub=false` once a real level
+exists. (Claude can't author `.umap` files from the headless box, hence runtime-spawning.)
 
 ## 9. Current state
 
@@ -159,3 +169,7 @@ Verbs: `Primary, Left, Right, Up, Down, Power+, Power-, Weapon`.
   `bUseUnity=false`, fixed C4458 shadows (`Owner`, `Result`). Project now compiles.
 - **2026-06-11** — First-person character (walk/sprint/jump/crouch, networked); PIE defaults to
   listen server + 4 players. Created this CLAUDE.md.
+- **2026-06-11** — Filler visuals so functions are visible without art: player `BodyMesh` (cylinder,
+  owner-hidden), PC stations get desk+screen cubes, runtime placeholder hub (floor/stations/light) +
+  spread player spawns via `ChoosePlayerStart`. Sprint changed to a toggle (fixes W+Shift+Space
+  jump jam from keyboard ghosting). New class `APPPlaceholderBlock`.

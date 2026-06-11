@@ -6,6 +6,7 @@
 #include "Core/PPTypes.h"
 #include "Camera/CameraComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "UObject/ConstructorHelpers.h"
 #include "Net/UnrealNetwork.h"
 
 APPPCStation::APPPCStation()
@@ -13,25 +14,35 @@ APPPCStation::APPPCStation()
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
 
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMesh(TEXT("/Engine/BasicShapes/Cube.Cube"));
+
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
 
+	// Desk (a wide low block). Components are siblings under SceneRoot so scales don't cascade.
 	DeskMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DeskMesh"));
 	DeskMesh->SetupAttachment(SceneRoot);
+	DeskMesh->SetRelativeLocation(FVector(0.f, 0.f, 40.f));
+	DeskMesh->SetRelativeScale3D(FVector(1.2f, 1.8f, 0.8f));
+	if (CubeMesh.Succeeded()) { DeskMesh->SetStaticMesh(CubeMesh.Object); }
 
+	// Screen (a thin upright block) — the "filler screen" you look at when seated.
 	ScreenMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ScreenMesh"));
-	ScreenMesh->SetupAttachment(DeskMesh);
-	ScreenMesh->SetRelativeLocation(FVector(0.f, 0.f, 60.f));
+	ScreenMesh->SetupAttachment(SceneRoot);
+	ScreenMesh->SetRelativeLocation(FVector(0.f, 0.f, 150.f));
+	ScreenMesh->SetRelativeScale3D(FVector(0.12f, 1.4f, 1.0f));
+	ScreenMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	if (CubeMesh.Succeeded()) { ScreenMesh->SetStaticMesh(CubeMesh.Object); }
 
-	// Camera sits in front of the screen, looking back at it, so the seated player sees the 2D game.
+	// Seat-side camera looking at the screen: this is the player's view while seated.
 	MinigameCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("MinigameCamera"));
-	MinigameCamera->SetupAttachment(ScreenMesh);
-	MinigameCamera->SetRelativeLocation(FVector(80.f, 0.f, 0.f));
-	MinigameCamera->SetRelativeRotation(FRotator(0.f, 180.f, 0.f));
+	MinigameCamera->SetupAttachment(SceneRoot);
+	MinigameCamera->SetRelativeLocation(FVector(-70.f, 0.f, 150.f));
+	MinigameCamera->SetRelativeRotation(FRotator(0.f, 0.f, 0.f)); // faces +X toward the screen
 
 	SeatPoint = CreateDefaultSubobject<USceneComponent>(TEXT("SeatPoint"));
 	SeatPoint->SetupAttachment(SceneRoot);
-	SeatPoint->SetRelativeLocation(FVector(-80.f, 0.f, 0.f));
+	SeatPoint->SetRelativeLocation(FVector(-90.f, 0.f, 0.f));
 }
 
 void APPPCStation::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

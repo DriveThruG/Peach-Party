@@ -5,6 +5,7 @@
 #include "PPCharacter.generated.h"
 
 class UCameraComponent;
+class UStaticMeshComponent;
 class IPPInteractable;
 
 /**
@@ -43,8 +44,8 @@ protected:
 
 	void OnJumpPressed();
 	void OnJumpReleased();
-	void StartSprint();
-	void StopSprint();
+	/** Toggle sprint (tap, don't hold) — avoids the W+Shift+Space keyboard-ghosting jam. */
+	void ToggleSprint();
 	void OnCrouchPressed();
 	void OnCrouchReleased();
 
@@ -84,6 +85,10 @@ protected:
 	// ---- Camera ----
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	UCameraComponent* FirstPersonCamera;
+
+	/** Placeholder body so OTHER players can see you (hidden for the local first-person owner). */
+	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Placeholder")
+	UStaticMeshComponent* BodyMesh;
 
 	// ---- Movement tuning ----
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Movement")
