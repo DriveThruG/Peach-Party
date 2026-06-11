@@ -158,6 +158,21 @@ void UPPGameInstance::JoinGameByIndex(int32 Index)
 	Session->JoinSession(0, NAME_GameSession, SearchSettings->SearchResults[Index]);
 }
 
+void UPPGameInstance::JoinByIP(const FString& IpAddress)
+{
+	FString Ip = IpAddress.TrimStartAndEnd();
+	if (Ip.IsEmpty())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[PeachParty] JoinByIP: empty address."));
+		return;
+	}
+	if (APlayerController* PC = GetFirstLocalPlayerController())
+	{
+		UE_LOG(LogTemp, Log, TEXT("[PeachParty] JoinByIP: ClientTravel to %s"), *Ip);
+		PC->ClientTravel(Ip, TRAVEL_Absolute); // direct connect to the host's listen server
+	}
+}
+
 void UPPGameInstance::HandleJoinComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result)
 {
 	IOnlineSessionPtr Session = GetSession();

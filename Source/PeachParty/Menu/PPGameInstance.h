@@ -45,6 +45,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "PeachParty|Session")
 	void JoinGameByIndex(int32 Index);
 
+	/** RELIABLE fallback: connect straight to a host's IP (e.g. "192.168.1.42" or "127.0.0.1" for local
+	 *  2-process testing). Bypasses LAN session discovery entirely — best for a demo when the beacon is
+	 *  blocked by a firewall. The host must already be hosting (listen server). */
+	UFUNCTION(BlueprintCallable, Category = "PeachParty|Session")
+	void JoinByIP(const FString& IpAddress);
+
 	/** Results of the last FindGames — bind a ListView/ForEach in WBP_ServerBrowser to this. */
 	UPROPERTY(BlueprintReadOnly, Category = "PeachParty|Session")
 	TArray<FPPServerEntry> ServerList;

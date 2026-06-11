@@ -292,6 +292,9 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-11** — Added `UPPGameInstance::JoinByIP(FString)` (BlueprintCallable) — direct ClientTravel
+  to a host IP, bypassing the flaky NULL LAN beacon (firewall-blocked across machines). Reliable demo
+  path: host hosts, joiner types the host's IP (or 127.0.0.1 for local 2-process) → connect.
 - **2026-06-11** — Menu flow bugfixes (host→stuck on menu, join→black, host-twice→black): (1) viewport
   widgets survive level travel, so `APPCharacter::PawnClientRestart` now `RemoveAllViewportWidgets()` on
   lobby entry (clears leftover menu UI). (2) `UPPGameInstance::HostGame` now destroys a stale session
