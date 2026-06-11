@@ -1,5 +1,7 @@
 #include "Core/PPGameState.h"
 #include "Core/PPPlayerState.h"
+#include "Core/PPPlayerController.h"
+#include "Engine/World.h"
 #include "Net/UnrealNetwork.h"
 
 void APPGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -14,6 +16,44 @@ void APPGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(APPGameState, ActiveMinigames);
 	DOREPLIFETIME(APPGameState, AttackingTeam);
 	DOREPLIFETIME(APPGameState, ActiveRoomIndex);
+	DOREPLIFETIME(APPGameState, TeamAReward);
+	DOREPLIFETIME(APPGameState, TeamBReward);
+	DOREPLIFETIME(APPGameState, LastRoundWinner);
+}
+
+EPPReward APPGameState::GetTeamReward(EPPTeam Team) const
+{
+	if (Team == EPPTeam::TeamA) return TeamAReward;
+	if (Team == EPPTeam::TeamB) return TeamBReward;
+	return EPPReward::None;
+}
+
+bool APPGameState::IsRewardEligible(EPPTeam Team) const
+{
+	if (Team == EPPTeam::TeamA) return TeamAScore >= TeamBScore; // winner, or both on a draw
+	if (Team == EPPTeam::TeamB) return TeamBScore >= TeamAScore;
+	return false;
+}
+
+void APPGameState::SetTeamReward(EPPTeam Team, EPPReward Reward)
+{
+	if (!HasAuthority()) return;
+	if (Team == EPPTeam::TeamA) TeamAReward = Reward;
+	else if (Team == EPPTeam::TeamB) TeamBReward = Reward;
+}
+
+void APPGameState::SetLastRoundWinner(EPPTeam Team)
+{
+	if (HasAuthority())
+	{
+		LastRoundWinner = Team;
+		OnRep_RoundResult(); // host mirror
+	}
+}
+
+void APPGameState::OnRep_RoundResult()
+{
+	BP_OnRoundResult(LastRoundWinner);
 }
 
 void APPGameState::SetAttackingTeam(EPPTeam Team)
@@ -139,5 +179,14 @@ void APPGameState::AddTeamScore(EPPTeam Team, int32 Delta)
 
 void APPGameState::OnRep_Phase()
 {
-	BP_OnPhaseChanged(CurrentPhase);
+	BP_OnPhaseChanged(CurrentPhase); // UMG swaps the on-screen panel per phase
+
+	// Smooth fade on every phase transition (Lobby -> Minigame -> Reward -> Final ...).
+	if (UWorld* World = GetWorld())
+	{
+		if (APPPlayerController* PC = Cast<APPPlayerController>(World->GetFirstPlayerController()))
+		{
+			PC->PlayTransitionFade();
+		}
+	}
 }

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "Final/PPClassTypes.h"
+#include "Final/PPRewardTypes.h"
 #include "PPPlayerController.generated.h"
 
 class APPPCStation;
@@ -57,6 +58,13 @@ public:
 	UFUNCTION(Server, Reliable)
 	void ServerSelectClass(EPPClass NewClass);
 
+	/** Client -> Server: pick the team reward (server gates it to the Reward phase + an eligible team). */
+	UFUNCTION(Server, Reliable)
+	void ServerSelectReward(EPPReward Reward);
+
+	/** Local fade-to-black-and-back, used as a smooth transition on camera/phase changes. */
+	void PlayTransitionFade(float HalfSeconds = 0.25f);
+
 	UFUNCTION(BlueprintPure, Category = "PeachParty|Interaction")
 	APPPCStation* GetSeatedStation() const { return SeatedStation; }
 
@@ -80,4 +88,7 @@ protected:
 
 	/** Server-side transient: index into GameState's instance list while spectating. */
 	int32 SpectateIndex = 0;
+
+	FTimerHandle FadeTimer;
+	void FadeBackIn(float Seconds);
 };

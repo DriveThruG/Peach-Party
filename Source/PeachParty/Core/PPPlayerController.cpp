@@ -4,6 +4,9 @@
 #include "Core/PPPlayerState.h"
 #include "Core/PPGameState.h"
 #include "Minigame/PPMinigameBase.h"
+#include "Camera/PlayerCameraManager.h"
+#include "TimerManager.h"
+#include "Engine/World.h"
 #include "Net/UnrealNetwork.h"
 
 void APPPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -142,6 +145,43 @@ void APPPlayerController::ServerSelectClass_Implementation(EPPClass NewClass)
 void APPPlayerController::OnRep_View()
 {
 	RefreshViewTarget();
+	if (IsLocalController())
+	{
+		PlayTransitionFade(); // smooth fade-to-black-and-back on every camera transition
+	}
+}
+
+void APPPlayerController::ServerSelectReward_Implementation(EPPReward Reward)
+{
+	APPGameState* GS = GetWorld() ? GetWorld()->GetGameState<APPGameState>() : nullptr;
+	const APPPlayerState* PS = GetPlayerState<APPPlayerState>();
+	if (!GS || !PS || GS->GetCurrentPhase() != EMatchPhase::Reward)
+	{
+		return; // only during the reward window
+	}
+	if (!GS->IsRewardEligible(PS->GetTeam()))
+	{
+		return; // only the team(s) that earned a reward
+	}
+	GS->SetTeamReward(PS->GetTeam(), Reward);
+}
+
+void APPPlayerController::PlayTransitionFade(float HalfSeconds)
+{
+	if (PlayerCameraManager && !GetWorldTimerManager().IsTimerActive(FadeTimer))
+	{
+		PlayerCameraManager->StartCameraFade(0.f, 1.f, HalfSeconds, FLinearColor::Black, false, /*bHoldWhenFinished=*/true);
+		GetWorldTimerManager().SetTimer(FadeTimer,
+			FTimerDelegate::CreateUObject(this, &APPPlayerController::FadeBackIn, HalfSeconds), HalfSeconds, false);
+	}
+}
+
+void APPPlayerController::FadeBackIn(float Seconds)
+{
+	if (PlayerCameraManager)
+	{
+		PlayerCameraManager->StartCameraFade(1.f, 0.f, Seconds, FLinearColor::Black, false, false);
+	}
 }
 
 void APPPlayerController::RefreshViewTarget(float BlendTime)

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Core/PPTypes.h"
+#include "Final/PPClassTypes.h"
 #include "PPCharacter.generated.h"
 
 class UCameraComponent;
@@ -80,6 +81,9 @@ protected:
 	void OnMG_Weapon();
 
 	// ---- Final-phase combat ----
+	/** Class stats with the team reward applied (Speed/Ammo/Wetness +10%). */
+	FPPClassStats GetEffectiveStats() const;
+
 	/** Apply the player's class stats (movement speed, ammo). Called on spawn. */
 	void ApplyClassStats();
 

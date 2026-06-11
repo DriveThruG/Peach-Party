@@ -1,4 +1,6 @@
 #include "Core/PPPlayerState.h"
+#include "Core/PPGameState.h"
+#include "Engine/World.h"
 #include "Net/UnrealNetwork.h"
 
 APPPlayerState::APPPlayerState()
@@ -36,9 +38,16 @@ bool APPPlayerState::AddWetness(float Amount)
 	{
 		return false;
 	}
-	Wetness = FMath::Clamp(Wetness + Amount, 0.f, 100.f);
+	// +10% wetness capacity reward raises the slip threshold (100 -> 110).
+	float Threshold = 100.f;
+	const APPGameState* GS = GetWorld() ? GetWorld()->GetGameState<APPGameState>() : nullptr;
+	if (GS && GS->GetTeamReward(Team) == EPPReward::Health)
+	{
+		Threshold *= PPReward::Bonus;
+	}
+	Wetness = FMath::Clamp(Wetness + Amount, 0.f, Threshold);
 	OnRep_Wetness();
-	if (Wetness >= 100.f)
+	if (Wetness >= Threshold)
 	{
 		bIsSlipping = true; // caller (character/gamemode) reacts: ragdoll + schedule respawn
 		return true;

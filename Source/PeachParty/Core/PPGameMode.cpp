@@ -251,6 +251,8 @@ void APPGameMode::StartRound(int32 RoundIndex)
 
 	CurrentRound = RoundIndex;
 	WaitingPlayer = nullptr;
+	RoundStartTeamAScore = GS->GetTeamScore(EPPTeam::TeamA); // snapshot to compute this round's winner
+	RoundStartTeamBScore = GS->GetTeamScore(EPPTeam::TeamB);
 
 	// Split by (fixed) team, then shuffle each so opponents are randomized this round.
 	TArray<APPPlayerState*> TeamA;
@@ -413,6 +415,20 @@ void APPGameMode::NotifyMinigameFinished(APPMinigameBase* Match, EMatchResult Re
 }
 
 void APPGameMode::OnRoundComplete()
+{
+	// Winner of THIS minigame = whoever gained more wins this round (for the result screen).
+	if (APPGameState* GS = GetPPGameState())
+	{
+		const int32 DeltaA = GS->GetTeamScore(EPPTeam::TeamA) - RoundStartTeamAScore;
+		const int32 DeltaB = GS->GetTeamScore(EPPTeam::TeamB) - RoundStartTeamBScore;
+		GS->SetLastRoundWinner(DeltaA > DeltaB ? EPPTeam::TeamA : (DeltaB > DeltaA ? EPPTeam::TeamB : EPPTeam::None));
+	}
+
+	// Hold on the result screen for a beat, then move on.
+	GetWorldTimerManager().SetTimer(RoundResultTimer, this, &APPGameMode::AfterRoundResult, RoundResultSeconds, false);
+}
+
+void APPGameMode::AfterRoundResult()
 {
 	if (CurrentRound == 0)
 	{

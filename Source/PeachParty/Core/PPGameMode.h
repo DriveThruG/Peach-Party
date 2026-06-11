@@ -75,7 +75,11 @@ public:
 	float ArenaSpacing = 100000.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Rules")
-	float RewardDurationSeconds = 8.f;
+	float RewardDurationSeconds = 12.f; // window for the result + reward-pick UI
+
+	/** Pause after each minigame to show the result screen. */
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Rules")
+	float RoundResultSeconds = 5.f;
 
 	/** Final phase: time the attackers get per room (reset/extended on each capture). */
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Rules")
@@ -114,6 +118,7 @@ protected:
 	void StartRound(int32 RoundIndex);
 	void SpawnMatch(APPPlayerState* TeamAPlayer, APPPlayerState* TeamBPlayer);
 	void OnRoundComplete();
+	void AfterRoundResult(); // after the result-screen pause: next round or finish
 	void FinishMinigamePhase();
 	void OnGlobalMinigameTimeout();
 
@@ -152,4 +157,9 @@ protected:
 	TArray<APPObjectiveRoom*> Rooms;
 
 	int32 CurrentRoomArrayIndex = -1;
+
+	/** Team scores snapshotted at the start of a round, to compute that round's winner. */
+	int32 RoundStartTeamAScore = 0;
+	int32 RoundStartTeamBScore = 0;
+	FTimerHandle RoundResultTimer;
 };

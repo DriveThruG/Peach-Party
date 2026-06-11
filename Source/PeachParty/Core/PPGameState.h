@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
 #include "Core/PPTypes.h"
+#include "Final/PPRewardTypes.h"
 #include "PPGameState.generated.h"
 
 class APPMinigameBase;
@@ -60,6 +61,21 @@ public:
 	void SetAttackingTeam(EPPTeam Team);
 	void SetActiveRoomIndex(int32 Index);
 
+	// ---- Rewards (chosen after the minigames, applied for the whole final phase) ----
+	UFUNCTION(BlueprintPure, Category = "PeachParty|Final")
+	EPPReward GetTeamReward(EPPTeam Team) const;
+
+	/** A team may pick a reward if it won the minigame round; on a draw BOTH teams may pick. */
+	UFUNCTION(BlueprintPure, Category = "PeachParty|Final")
+	bool IsRewardEligible(EPPTeam Team) const;
+
+	/** Winner of the most recently finished minigame (for the result screen). */
+	UFUNCTION(BlueprintPure, Category = "PeachParty|Final")
+	EPPTeam GetLastRoundWinner() const { return LastRoundWinner; }
+
+	void SetTeamReward(EPPTeam Team, EPPReward Reward);
+	void SetLastRoundWinner(EPPTeam Team);
+
 	// ---- SERVER only mutators (called by APPGameMode) ----
 	void SetPhase(EMatchPhase NewPhase);
 	void SetCurrentMinigameIndex(int32 Index);
@@ -93,6 +109,22 @@ protected:
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "PeachParty|Final")
 	int32 ActiveRoomIndex = 0; // 0 = none yet; 1..3 active room
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "PeachParty|Final")
+	EPPReward TeamAReward = EPPReward::None;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "PeachParty|Final")
+	EPPReward TeamBReward = EPPReward::None;
+
+	UPROPERTY(ReplicatedUsing = OnRep_RoundResult, BlueprintReadOnly, Category = "PeachParty|Final")
+	EPPTeam LastRoundWinner = EPPTeam::None;
+
+	UFUNCTION()
+	void OnRep_RoundResult();
+
+	/** Fires on clients when a minigame's result is in — show the result screen (team wins + winner). */
+	UFUNCTION(BlueprintImplementableEvent, Category = "PeachParty|Final")
+	void BP_OnRoundResult(EPPTeam Winner);
 
 	UFUNCTION()
 	void OnRep_Phase();

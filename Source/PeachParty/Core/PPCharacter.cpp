@@ -255,15 +255,29 @@ void APPCharacter::OnInteractPressed()
 
 // --------------------------------------------------------- final combat ----
 
-void APPCharacter::ApplyClassStats()
+FPPClassStats APPCharacter::GetEffectiveStats() const
 {
 	const APPPlayerState* PS = GetPlayerState<APPPlayerState>();
+	FPPClassStats St = PS ? PS->GetClassStats() : FPPClassStats();
 	if (!PS)
 	{
-		return;
+		return St;
 	}
-	const FPPClassStats St = PS->GetClassStats();
-	WalkSpeed = St.MoveSpeed;          // class sets base walk speed...
+	const APPGameState* GS = GetWorld() ? GetWorld()->GetGameState<APPGameState>() : nullptr;
+	switch (GS ? GS->GetTeamReward(PS->GetTeam()) : EPPReward::None)
+	{
+	case EPPReward::Speed:   St.MoveSpeed     *= PPReward::Bonus; break;
+	case EPPReward::Ammo:    St.AmmoCapacity   = FMath::RoundToInt(St.AmmoCapacity * PPReward::Bonus); break;
+	case EPPReward::Wetness: St.WetnessPerHit *= PPReward::Bonus; break;
+	default: break; // Health is handled by the wetness slip threshold in PlayerState
+	}
+	return St;
+}
+
+void APPCharacter::ApplyClassStats()
+{
+	const FPPClassStats St = GetEffectiveStats();
+	WalkSpeed = St.MoveSpeed;          // class (+reward) sets base walk speed...
 	SprintSpeed = St.MoveSpeed * 1.25f; // ...sprint scales from it
 	ApplyMovementSpeed();
 	CurrentAmmo = St.AmmoCapacity;
@@ -291,7 +305,7 @@ void APPCharacter::ServerFire_Implementation()
 		return;
 	}
 
-	const FPPClassStats St = PS->GetClassStats();
+	const FPPClassStats St = GetEffectiveStats(); // class + team reward
 	const float Now = World->GetTimeSeconds();
 	if (Now - LastFireServerTime < St.FireInterval || CurrentAmmo <= 0)
 	{
