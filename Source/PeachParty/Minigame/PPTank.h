@@ -99,10 +99,16 @@ protected:
 	UPROPERTY(Replicated)
 	float FacingSign = 1.f;
 
+	UPROPERTY(ReplicatedUsing = OnRep_Team)
 	EPPTeam Team = EPPTeam::None;
 
 	UFUNCTION()
 	void OnRep_Aim();
+
+	UFUNCTION()
+	void OnRep_Team();
+
+	void ApplyTeamColor();
 
 	/** Keep the barrel visual matching the aim (server + clients via the replicated angle). */
 	void UpdateBarrelVisual();

@@ -44,6 +44,7 @@ public:
 	bool IsTurnInProgress() const { return bTurnInProgress; }
 
 protected:
+	virtual void BeginPlay() override;
 	virtual void OnMinigameStarted() override;
 	virtual void OnMinigameFinished() override;
 

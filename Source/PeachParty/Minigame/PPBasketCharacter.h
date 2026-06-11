@@ -11,17 +11,13 @@ class USceneComponent;
 class APPPlayerState;
 
 /**
- * One of a player's TWO peach characters in Peach Basket. A wobbly server-simulated physics capsule
- * (no uprighting -> it tips, rotates and bumps the others = the intended chaos). Not possessed:
- * the owning player's single input drives both of their characters via APPPeachBasketGame.
+ * One of a player's TWO peach characters in Peach Basket. Physics is a wobbly server-simulated capsule
+ * (no uprighting); the VISUAL is 2D filler: a flat body+head quad plus a separate arms quad that
+ * rotates up while charging (matching the requested two-part sprite layout). Team-tinted (A blue / B red).
  *
- * THROW = CHARGE: while Space is held the character "charges" — ArmAngle rises slowly from 0 toward
- * MaxArmAngle. The angle at RELEASE sets the throw elevation: too low (just grabbed) = weak/short,
- * near the sweet spot = a clean arc into the basket. The horizontal direction is the body's current
- * (possibly tilted) facing, so you also have to be oriented right — that's the chaos.
- *
- * Server simulates physics + advances ArmAngle; clients are proxies. Only bCharging replicates, so
- * clients animate the arm raise locally; the precise angle is server-only and authoritative.
+ * THROW = CHARGE: while Space is held ArmAngleDeg rises (server). The angle at RELEASE sets the throw
+ * elevation. Horizontal direction = body facing (tilt = chaos). Only bCharging + Team replicate; the
+ * precise angle is server-only and the client animates the arm quad locally from bCharging.
  */
 UCLASS()
 class PEACHPARTY_API APPBasketCharacter : public AActor
@@ -34,68 +30,63 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	/** SERVER. Bind owner/team. */
+	/** SERVER. Bind owner/team (also tints the body on the server). */
 	void InitCharacter(APPPlayerState* InOwner, EPPTeam InTeam);
 
-	/** SERVER. Jump along the current (possibly tilted) body orientation. */
 	void DoJump(float UpImpulse, float ForwardImpulse);
-
-	/** SERVER. Begin charging: arms start rising from 0. (Also call DoJump on the same press.) */
 	void StartCharge();
-
-	/** SERVER. Stop charging; returns the arm angle (deg) reached, then lowers arms. */
 	float StopCharge();
-
-	/** SERVER. Teleport to a transform, zero velocities, lower arms (post-score reset). */
 	void ResetTo(const FTransform& Transform);
 
-	/** Arms are up (charging) -> this character can grab / hold / steal. */
 	bool IsCharging() const { return bCharging; }
-
-	/** Server-authoritative arm angle in degrees (0 = down). */
 	float GetArmAngleDeg() const { return ArmAngleDeg; }
-
 	EPPTeam GetTeam() const { return Team; }
 	APPPlayerState* GetOwningPlayer() const { return OwningPlayer; }
 
 	USceneComponent* GetHandPoint() const { return HandPoint; }
 	FVector GetHandLocation() const;
-
-	/** Horizontal facing (body forward projected to ground), used as throw azimuth. */
 	FVector GetThrowDirection() const;
 
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
 	float MaxArmAngleDeg = 80.f;
 
-	/** "Slowly" — ~0.6s of holding to reach a good angle. Tune to taste. */
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket")
 	float ArmRaiseRateDegPerSec = 120.f;
 
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
-	UCapsuleComponent* Body;        // simulating physics root
+	UCapsuleComponent* Body;          // simulating physics root (collision only)
 
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
-	UStaticMeshComponent* Visual;   // cosmetic, non-colliding
+	UStaticMeshComponent* BodyMesh;   // flat body+head quad (visual)
 
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
-	USceneComponent* HandPoint;     // ball anchor / grab measure point
+	UStaticMeshComponent* ArmsMesh;   // flat arms quad (rotates while charging)
+
+	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Basket")
+	USceneComponent* HandPoint;
 
 	UPROPERTY(ReplicatedUsing = OnRep_Charging)
 	bool bCharging = false;
 
-	/** SERVER only. Continuous; not replicated (clients animate from bCharging). */
-	float ArmAngleDeg = 0.f;
+	/** Replicated so clients can team-tint. */
+	UPROPERTY(ReplicatedUsing = OnRep_Team)
+	EPPTeam Team = EPPTeam::None;
+
+	float ArmAngleDeg = 0.f;     // SERVER gameplay angle
+	float VisualArmAngle = 0.f;  // LOCAL eased visual angle (all machines)
 
 	UPROPERTY()
 	APPPlayerState* OwningPlayer = nullptr;
 
-	EPPTeam Team = EPPTeam::None;
-
 	UFUNCTION()
 	void OnRep_Charging();
 
-	/** BP hook: start/stop the local arm-raise animation. */
+	UFUNCTION()
+	void OnRep_Team();
+
+	void ApplyTeamColor();
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "PeachParty|Basket")
 	void BP_OnChargingChanged(bool bNowCharging);
 };

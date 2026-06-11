@@ -1,5 +1,6 @@
 #include "Minigame/PPProjectile.h"
 #include "Minigame/PPPeachArtilleryGame.h"
+#include "Minigame/PPVisual.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
@@ -36,6 +37,12 @@ APPProjectile::APPProjectile()
 	Movement->bRotationFollowsVelocity = true;
 
 	InitialLifeSpan = 15.f; // safety: never linger if it somehow never hits
+}
+
+void APPProjectile::BeginPlay()
+{
+	Super::BeginPlay();
+	PPVisual::Tint(Mesh, FLinearColor(1.0f, 0.85f, 0.10f)); // bright shell
 }
 
 void APPProjectile::Launch(const FVector& Velocity, APPPeachArtilleryGame* InGame, int32 InWeaponIndex, AActor* IgnoredShooter)

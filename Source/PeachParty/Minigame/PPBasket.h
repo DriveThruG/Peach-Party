@@ -20,6 +20,8 @@ class PEACHPARTY_API APPBasket : public AActor
 public:
 	APPBasket();
 
+	virtual void BeginPlay() override;
+
 	/** SERVER. The player who gets the point when the ball enters this basket. */
 	void SetScorer(APPPlayerState* InScorer) { Scorer = InScorer; }
 	APPPlayerState* GetScorer() const { return Scorer; }

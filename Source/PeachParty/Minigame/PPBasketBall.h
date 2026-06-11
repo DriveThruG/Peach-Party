@@ -21,6 +21,7 @@ class PEACHPARTY_API APPBasketBall : public AActor
 public:
 	APPBasketBall();
 
+	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	/** SERVER. Attach to a hand point and stop simulating. */

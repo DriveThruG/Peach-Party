@@ -28,6 +28,8 @@ public:
 	void Launch(const FVector& Velocity, APPPeachArtilleryGame* InGame, int32 InWeaponIndex, AActor* IgnoredShooter);
 
 protected:
+	virtual void BeginPlay() override;
+
 	/** Lifespan-expiry safety: if we die without a hit, still report a (harmless) miss so the turn advances. */
 	virtual void Destroyed() override;
 

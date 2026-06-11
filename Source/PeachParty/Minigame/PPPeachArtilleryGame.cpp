@@ -1,6 +1,7 @@
 #include "Minigame/PPPeachArtilleryGame.h"
 #include "Minigame/PPTank.h"
 #include "Minigame/PPProjectile.h"
+#include "Minigame/PPVisual.h"
 #include "Core/PPPlayerState.h"
 #include "Components/StaticMeshComponent.h"
 #include "Camera/CameraComponent.h"
@@ -42,6 +43,12 @@ void APPPeachArtilleryGame::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(APPPeachArtilleryGame, bTurnInProgress);
 	DOREPLIFETIME(APPPeachArtilleryGame, Tank1);
 	DOREPLIFETIME(APPPeachArtilleryGame, Tank2);
+}
+
+void APPPeachArtilleryGame::BeginPlay()
+{
+	Super::BeginPlay();
+	PPVisual::Tint(Floor, FLinearColor(0.45f, 0.22f, 0.10f)); // brown terrain (runs on all machines)
 }
 
 void APPPeachArtilleryGame::OnMinigameStarted()

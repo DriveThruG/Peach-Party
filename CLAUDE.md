@@ -99,6 +99,17 @@ Peach Artillery. **Each individual 1v1 win = +1 team point.**
 - `APPPeachBasketGame` (+ `APPBasketBall`, `APPBasketCharacter`, `APPBasket`).
 - `APPPeachArtilleryGame` (+ `APPTank`, `APPProjectile`, `PPArtilleryTypes.h`).
 
+### Minigame visuals (filler, 2D look)
+Until real Paper2D sprite assets exist (Claude can't author `.uasset`/textures headless), visuals are
+**flat camera-facing quads** (cubes flattened along Y, the camera-depth axis) tinted by a dynamic
+material via `Minigame/PPVisual.h` (`Tint` + `TeamColor`: A=blue, B=red; ball=orange, hoop=red,
+shell=yellow, terrain=brown). The basket character is two parts as requested: a **body+head quad** and
+a **separate arms quad** that rotates up while charging (eased locally from the replicated `bCharging`).
+`Team` is replicated on the basket character + tank so clients tint correctly (`OnRep_Team`).
+**Caveat:** tint needs the mesh material to expose a `Color`/`BaseColor` param; if the engine BasicShapes
+material doesn't, shapes show default-grey — assign a coloured material/sprite in a BP child. Swap each
+visual `UStaticMeshComponent` for a `UPaperSpriteComponent` later (call sites only set the tint).
+
 ### Peach Basket (real-time physics)
 - One input (**Space**). Each player drives **two** wobbly server-simulated physics capsules.
 - **Space = charge:** press → jump (impulse along current tilted facing) + arms start rising slowly
@@ -185,3 +196,6 @@ lighting otherwise "competes" with it; only enable on a truly empty level).
 - **2026-06-11** — Default map set to `/Game/Maps/PeachPartyHub` (user must create that empty level
   once in-editor — Claude can't author `.umap`). Placeholder light back ON by default for that empty
   level. NOTE: if `PeachPartyHub` doesn't exist yet, PIE will error until it's created at that path.
+- **2026-06-11** — Minigame 2D filler visuals: flat camera-facing quads tinted by team/role via new
+  `Minigame/PPVisual.h`. Basket character split into body quad + rotating arms quad. `Team` replicated
+  on basket character + tank for client tinting. Tanks/bodies flattened along the camera-depth axis.

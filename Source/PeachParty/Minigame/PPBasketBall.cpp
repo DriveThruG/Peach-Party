@@ -1,4 +1,5 @@
 #include "Minigame/PPBasketBall.h"
+#include "Minigame/PPVisual.h"
 #include "Components/StaticMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Net/UnrealNetwork.h"
@@ -23,6 +24,12 @@ APPBasketBall::APPBasketBall()
 		Mesh->SetStaticMesh(SphereMesh.Object);
 		Mesh->SetWorldScale3D(FVector(0.4f));
 	}
+}
+
+void APPBasketBall::BeginPlay()
+{
+	Super::BeginPlay();
+	PPVisual::Tint(Mesh, FLinearColor(1.0f, 0.55f, 0.05f)); // basketball orange
 }
 
 void APPBasketBall::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

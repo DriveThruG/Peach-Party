@@ -1,4 +1,5 @@
 #include "Minigame/PPTank.h"
+#include "Minigame/PPVisual.h"
 #include "Components/StaticMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Net/UnrealNetwork.h"
@@ -18,7 +19,7 @@ APPTank::APPTank()
 	if (CubeMesh.Succeeded())
 	{
 		Body->SetStaticMesh(CubeMesh.Object);
-		Body->SetWorldScale3D(FVector(1.4f, 1.0f, 0.6f));
+		Body->SetWorldScale3D(FVector(1.4f, 0.25f, 0.6f)); // flat along the camera-depth axis (2D look)
 	}
 
 	Barrel = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Barrel"));
@@ -46,6 +47,7 @@ void APPTank::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeP
 	DOREPLIFETIME(APPTank, PowerPercent);
 	DOREPLIFETIME(APPTank, WeaponIndex);
 	DOREPLIFETIME(APPTank, FacingSign);
+	DOREPLIFETIME(APPTank, Team);
 }
 
 void APPTank::InitTank(APPPlayerState* InOwner, EPPTeam InTeam, float InFacingSign)
@@ -59,6 +61,7 @@ void APPTank::InitTank(APPPlayerState* InOwner, EPPTeam InTeam, float InFacingSi
 	// Face the enemy; forward vector then encodes facing, barrel pitch is local.
 	SetActorRotation(FRotator(0.f, (FacingSign > 0.f) ? 0.f : 180.f, 0.f));
 	UpdateBarrelVisual();
+	ApplyTeamColor(); // server
 }
 
 void APPTank::MoveStep(float InputDir)
@@ -127,6 +130,17 @@ FVector APPTank::GetLaunchDirection() const
 void APPTank::OnRep_Aim()
 {
 	UpdateBarrelVisual();
+}
+
+void APPTank::OnRep_Team()
+{
+	ApplyTeamColor();
+}
+
+void APPTank::ApplyTeamColor()
+{
+	PPVisual::Tint(Body, PPVisual::TeamColor(Team));
+	PPVisual::Tint(Barrel, FLinearColor(0.15f, 0.15f, 0.18f)); // dark barrel
 }
 
 void APPTank::UpdateBarrelVisual()
