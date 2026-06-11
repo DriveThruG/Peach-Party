@@ -36,19 +36,19 @@ APPBasketCharacter::APPBasketCharacter()
 	// as the body), so each arm sprite is offset by -ShoulderZ FROM the pivot -> at rest it lands back on
 	// the body's origin = perfectly aligned with the body art. Pitching ArmPivot then swings the arm
 	// around the shoulder. Only ±2 in Y separates front/back for draw order.
-	// Pivot + arm rest-offset scale with SpriteScale so the shoulder stays at the (now-bigger) shoulder.
+	// Pivot + arm rest-offset scale with VisualScale so the shoulder stays at the (now-bigger) shoulder.
 	ArmPivot = CreateDefaultSubobject<USceneComponent>(TEXT("ArmPivot"));
 	ArmPivot->SetupAttachment(Body);
-	ArmPivot->SetRelativeLocation(FVector(0.f, 0.f, ShoulderZ * SpriteScale)); // shoulder joint height in the art
+	ArmPivot->SetRelativeLocation(FVector(0.f, 0.f, ShoulderZ * VisualScale)); // shoulder joint height in the art
 
 	SpriteFront = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("SpriteFront"));
 	SpriteFront->SetupAttachment(ArmPivot);
-	SpriteFront->SetRelativeLocationAndRotation(FVector(0.f, -2.f, -ShoulderZ * SpriteScale), SpriteFacing); // back onto the body, in front
+	SpriteFront->SetRelativeLocationAndRotation(FVector(0.f, -2.f, -ShoulderZ * VisualScale), SpriteFacing); // back onto the body, in front
 	SpriteFront->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	SpriteBack = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("SpriteBack"));
 	SpriteBack->SetupAttachment(ArmPivot);
-	SpriteBack->SetRelativeLocationAndRotation(FVector(0.f, 2.f, -ShoulderZ * SpriteScale), SpriteFacing); // back onto the body, behind
+	SpriteBack->SetRelativeLocationAndRotation(FVector(0.f, 2.f, -ShoulderZ * VisualScale), SpriteFacing); // back onto the body, behind
 	SpriteBack->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	HandPoint = CreateDefaultSubobject<USceneComponent>(TEXT("HandPoint"));
@@ -202,9 +202,9 @@ void APPBasketCharacter::ApplySprites()
 	// FLIPPED (user request 2026-06-11): all players mirrored vs before. Left team (1&2) now default,
 	// right team (3&4) mirrored. Arms are a bit longer (Z 1.3).
 	const float FlipX = (SpriteVariant <= 2) ? 1.f : -1.f;
-	// Arms are full-canvas layers -> same scale as the body so they overlay 1:1. SpriteScale sizes the
+	// Arms are full-canvas layers -> same scale as the body so they overlay 1:1. VisualScale sizes the
 	// whole character uniformly (FlipX still mirrors via its sign).
-	const float S = SpriteScale;
+	const float S = VisualScale;
 	if (SpriteBody)  { SpriteBody->SetSprite(PPVisual::SpriteFromTexture(this, BodyTextures[Idx]));  SpriteBody->SetRelativeScale3D(FVector(FlipX * S, 1.f, S)); }
 	if (SpriteFront) { SpriteFront->SetSprite(PPVisual::SpriteFromTexture(this, ArmTextures[Idx]));  SpriteFront->SetRelativeScale3D(FVector(FlipX * S, 1.f, S)); }
 	if (SpriteBack)  { SpriteBack->SetSprite(PPVisual::SpriteFromTexture(this, BackArmTexture));     SpriteBack->SetRelativeScale3D(FVector(FlipX * S, 1.f, S)); }
