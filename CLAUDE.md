@@ -88,7 +88,9 @@ Peach Artillery. **Each individual 1v1 win = +1 team point.**
 - **Odd headcount:** the unmatched player on the bigger team waits/spectates; when the first
   opposite-team player finishes, those two play a **bonus match** (both results count — user's choice).
 - `NotifyMinigameFinished` scores the win, releases players, may spawn the bonus, advances the round.
-  Global timeout force-resolves everything. Then `FinishMinigamePhase → StartRewardPhase`.
+  Global timeout force-resolves everything. Then `FinishMinigamePhase`: it releases ALL PC stations
+  (`ServerReleaseOccupant` on every `APPPCStation` → screens off + each player's `SeatedStation`
+  cleared → camera blends back to their FP pawn = **back in the 3D world**) → `StartRewardPhase`.
 - **Spectator** = camera-only: `ServerCycleSpectate` (←/→) points `ServerViewTarget` at another live
   match. Server-gated ("not mid-match"). Cannot interfere by construction.
 
@@ -199,3 +201,6 @@ lighting otherwise "competes" with it; only enable on a truly empty level).
 - **2026-06-11** — Minigame 2D filler visuals: flat camera-facing quads tinted by team/role via new
   `Minigame/PPVisual.h`. Basket character split into body quad + rotating arms quad. `Team` replicated
   on basket character + tank for client tinting. Tanks/bodies flattened along the camera-depth axis.
+- **2026-06-11** — Flow close-out: after both minigames, `FinishMinigamePhase` releases every PC
+  station so players stand up (PCs off) and return to the 3D world. Placeholder stations bumped to 8
+  (one per max player) so everyone can sit / ready up.

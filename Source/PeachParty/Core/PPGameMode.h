@@ -82,7 +82,7 @@ public:
 	bool bSpawnPlaceholderHub = true;
 
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Placeholder")
-	int32 NumPlaceholderStations = 4;
+	int32 NumPlaceholderStations = 8; // one per max player so everyone can sit
 
 	/** On for the empty PeachPartyHub level (which has no light of its own). Set false again if you
 	 *  run on a level that already has lighting, otherwise the two lights compete. */

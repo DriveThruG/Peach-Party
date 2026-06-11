@@ -12,6 +12,7 @@
 #include "Engine/DirectionalLight.h"
 #include "Components/LightComponent.h"
 #include "GameFramework/PlayerStart.h"
+#include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "GameFramework/PlayerState.h"
 
@@ -461,6 +462,19 @@ void APPGameMode::FinishMinigamePhase()
 		GS->ClearActiveMinigames();
 		UE_LOG(LogTemp, Log, TEXT("[PeachParty] Minigame phase done. Team A %d, Team B %d."),
 			GS->GetTeamScore(EPPTeam::TeamA), GS->GetTeamScore(EPPTeam::TeamB));
+	}
+
+	// Both games are over: stand everyone up. Clearing each station's occupant turns its screen off
+	// (OnRep_Occupant) and clears the player's SeatedStation -> their camera blends back to their
+	// first-person pawn, so they're back in control in the 3D world.
+	TArray<AActor*> Stations;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APPPCStation::StaticClass(), Stations);
+	for (AActor* A : Stations)
+	{
+		if (APPPCStation* Station = Cast<APPPCStation>(A))
+		{
+			Station->ServerReleaseOccupant();
+		}
 	}
 
 	StartRewardPhase();
