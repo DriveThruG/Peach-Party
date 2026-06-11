@@ -247,6 +247,12 @@ lighting otherwise "competes" with it; only enable on a truly empty level).
 - **2026-06-11** — Paper2D enabled; Peach Basket switched to real sprites referencing the user's
   imported textures by path (body + 2 arms layered, ball, hoop). Physics locked to X-Z plane (2D side
   view), chars face camera, 4 art variants via replicated `SpriteVariant`.
+- **2026-06-11** — Transitions + reward system. Camera fade-to-black-and-back on phase/camera changes
+  (`PlayTransitionFade`, no widget). 4 team rewards (`Final/PPRewardTypes.h`, +10% speed/ammo/wetness/
+  capacity) picked in the Reward phase by the winning team(s) (`ServerSelectReward`, gated), applied via
+  `Character::GetEffectiveStats` + the wetness slip threshold. Per-minigame result screen
+  (`LastRoundWinner` + `RoundResultSeconds` pause + `BP_OnRoundResult`). UMG widgets (ready count /
+  score / result / reward menu) must be built in-editor and bound to the replicated GameState data.
 - **2026-06-11** — Final phase implemented (backbone): class system (4 classes, replicated, respawn-
   gated switching), wetness/slip + respawn, frontline 3-room objective progression (`APPObjectiveRoom`
   + GameMode front-shift + per-room timer reset), water-gun projectile combat (team-aware wetness).
