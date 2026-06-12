@@ -19,6 +19,11 @@ APPPCStation::APPPCStation()
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
 
+	// Optional custom model for the whole station (empty by default — assign your imported mesh here).
+	StationMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StationMesh"));
+	StationMesh->SetupAttachment(SceneRoot);
+	StationMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 	// Desk (a wide low block). Components are siblings under SceneRoot so scales don't cascade.
 	DeskMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DeskMesh"));
 	DeskMesh->SetupAttachment(SceneRoot);
@@ -54,6 +59,15 @@ void APPPCStation::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(APPPCStation, OccupantPlayerState);
+}
+
+void APPPCStation::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+
+	// Hide the placeholder cubes when you've assigned your own StationMesh. Runs live in the editor.
+	if (DeskMesh)   { DeskMesh->SetVisibility(!bHidePlaceholderBlocks); }
+	if (ScreenMesh) { ScreenMesh->SetVisibility(!bHidePlaceholderBlocks); }
 }
 
 bool APPPCStation::CanInteract(APPPlayerController* InteractingController) const
