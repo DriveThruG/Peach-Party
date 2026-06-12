@@ -99,10 +99,10 @@ public:
 	TSubclassOf<APPMinigameBase> ArtilleryGameClass;
 
 	// ---- Placeholder test hub (built at runtime so the project is playable with no level art) ----
-	// `config`: set bSpawnPlaceholderHub=False in Config/DefaultGame.ini once you place your OWN
-	// PC stations + team spawns in the level, so the runtime hub doesn't spawn on top of them.
+	// OFF: you place your OWN PC stations + team spawns in the level. Set True (or in DefaultGame.ini)
+	// only if you want the runtime floor + stations back for quick testing.
 	UPROPERTY(EditDefaultsOnly, Config, Category = "PeachParty|Placeholder")
-	bool bSpawnPlaceholderHub = true;
+	bool bSpawnPlaceholderHub = false;
 
 	// Just ONE station for quick testing — the rest you place by hand in the level.
 	UPROPERTY(EditDefaultsOnly, Config, Category = "PeachParty|Placeholder")

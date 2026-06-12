@@ -292,6 +292,12 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-12** — User takes over level building: reverted PC station to placeholder desk+screen cubes
+  (removed the PP_PC_Station path-load/100×/BeginPlay-load; `StationMesh` is now an empty optional slot,
+  `bHidePlaceholderBlocks` default false). `bSpawnPlaceholderHub` default **false** (no runtime hub).
+  Added two ready-to-place spawn classes: **`APPTeamAPlayerStart`** (blue) and **`APPTeamBPlayerStart`**
+  (red), subclasses of `APPTeamPlayerStart` with Team preset — drop from Place Actors; GameMode spawns
+  each player at a matching one.
 - **2026-06-12** — Station/seat/collision pass: (1) `StationMesh` scaled 100× (imported model was tiny).
   (2) Fixed "players half in floor" — `BodyMesh` cylinder pivot is its centre, so origin at -88 sank it
   88u below the capsule; moved to Z=0 (spans the capsule, base on floor). (3) PC-station `MinigameCamera`

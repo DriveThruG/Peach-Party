@@ -16,18 +16,15 @@ APPPCStation::APPPCStation()
 	bReplicates = true;
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMesh(TEXT("/Engine/BasicShapes/Cube.Cube"));
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> StationModel(TEXT("/Game/PeachParty/Interactables/PP_PC_Station.PP_PC_Station"));
 
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
 
-	// The user's imported station model. Resolves by path on the user's machine; placeholder cubes are
-	// hidden by default now that a real mesh exists (see bHidePlaceholderBlocks + OnConstruction).
+	// Empty optional slot — assign your OWN model per placed instance (Details panel) and set
+	// bHidePlaceholderBlocks=true if you want to hide the cubes. Default = placeholder desk+screen cubes.
 	StationMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StationMesh"));
 	StationMesh->SetupAttachment(SceneRoot);
 	StationMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	StationMesh->SetRelativeScale3D(FVector(0.1f)); 
-	if (StationModel.Succeeded()) { StationMesh->SetStaticMesh(StationModel.Object); }
 
 	// Desk (a wide low block). Components are siblings under SceneRoot so scales don't cascade.
 	DeskMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DeskMesh"));
@@ -66,21 +63,6 @@ void APPPCStation::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 void APPPCStation::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// Make sure the model is loaded even if the constructor FObjectFinder missed it (e.g. async/cook).
-	if (StationMesh && !StationMesh->GetStaticMesh())
-	{
-		UStaticMesh* M = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/PeachParty/Interactables/PP_PC_Station.PP_PC_Station"));
-		if (M)
-		{
-			StationMesh->SetStaticMesh(M);
-			UE_LOG(LogTemp, Log, TEXT("[PeachParty] PCStation: station model loaded in BeginPlay."));
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[PeachParty] PCStation: station model NOT FOUND at /Game/PeachParty/Interactables/PP_PC_Station — check the path/name."));
-		}
-	}
 	ApplyPlaceholderVisibility();
 }
 

@@ -29,3 +29,21 @@ public:
 	virtual void OnConstruction(const FTransform& Transform) override;
 #endif
 };
+
+/** Drag this into the level for a TEAM A spawn (Place Actors → "PPTeamAPlayerStart"). Arrow = blue. */
+UCLASS()
+class PEACHPARTY_API APPTeamAPlayerStart : public APPTeamPlayerStart
+{
+	GENERATED_BODY()
+public:
+	APPTeamAPlayerStart(const FObjectInitializer& ObjectInitializer);
+};
+
+/** Drag this into the level for a TEAM B spawn (Place Actors → "PPTeamBPlayerStart"). Arrow = red. */
+UCLASS()
+class PEACHPARTY_API APPTeamBPlayerStart : public APPTeamPlayerStart
+{
+	GENERATED_BODY()
+public:
+	APPTeamBPlayerStart(const FObjectInitializer& ObjectInitializer);
+};

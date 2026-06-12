@@ -6,6 +6,18 @@ APPTeamPlayerStart::APPTeamPlayerStart(const FObjectInitializer& ObjectInitializ
 {
 }
 
+APPTeamAPlayerStart::APPTeamAPlayerStart(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	Team = EPPTeam::TeamA;
+}
+
+APPTeamBPlayerStart::APPTeamBPlayerStart(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	Team = EPPTeam::TeamB;
+}
+
 #if WITH_EDITOR
 void APPTeamPlayerStart::OnConstruction(const FTransform& Transform)
 {
