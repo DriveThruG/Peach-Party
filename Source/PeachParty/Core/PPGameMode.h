@@ -104,8 +104,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Config, Category = "PeachParty|Placeholder")
 	bool bSpawnPlaceholderHub = true;
 
-	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Placeholder")
-	int32 NumPlaceholderStations = 8; // one per max player so everyone can sit
+	// Just ONE station for quick testing — the rest you place by hand in the level.
+	UPROPERTY(EditDefaultsOnly, Config, Category = "PeachParty|Placeholder")
+	int32 NumPlaceholderStations = 1;
 
 	/** OFF: the level already has its own directional light, so spawning another triggers the
 	 *  "Multiple directional lights are competing…" warning. Paper2D minigame sprites are unlit anyway.

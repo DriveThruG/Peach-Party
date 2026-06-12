@@ -6,6 +6,7 @@
 #include "Core/PPTypes.h"
 #include "Camera/CameraComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h" // LoadObject<UStaticMesh>
 #include "UObject/ConstructorHelpers.h"
 #include "Net/UnrealNetwork.h"
 
@@ -64,13 +65,40 @@ void APPPCStation::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(APPPCStation, OccupantPlayerState);
 }
 
+void APPPCStation::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// Make sure the model is loaded even if the constructor FObjectFinder missed it (e.g. async/cook).
+	if (StationMesh && !StationMesh->GetStaticMesh())
+	{
+		UStaticMesh* M = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/PeachParty/Interactables/PP_PC_Station.PP_PC_Station"));
+		if (M)
+		{
+			StationMesh->SetStaticMesh(M);
+			UE_LOG(LogTemp, Log, TEXT("[PeachParty] PCStation: station model loaded in BeginPlay."));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[PeachParty] PCStation: station model NOT FOUND at /Game/PeachParty/Interactables/PP_PC_Station — check the path/name."));
+		}
+	}
+	ApplyPlaceholderVisibility();
+}
+
 void APPPCStation::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
+	ApplyPlaceholderVisibility();
+}
 
-	// Hide the placeholder cubes when you've assigned your own StationMesh. Runs live in the editor.
-	if (DeskMesh)   { DeskMesh->SetVisibility(!bHidePlaceholderBlocks); }
-	if (ScreenMesh) { ScreenMesh->SetVisibility(!bHidePlaceholderBlocks); }
+void APPPCStation::ApplyPlaceholderVisibility()
+{
+	// Only hide the cubes if a real model is actually present — otherwise you'd see NOTHING.
+	const bool bHasModel = (StationMesh && StationMesh->GetStaticMesh() != nullptr);
+	const bool bHide = bHidePlaceholderBlocks && bHasModel;
+	if (DeskMesh)   { DeskMesh->SetVisibility(!bHide); }
+	if (ScreenMesh) { ScreenMesh->SetVisibility(!bHide); }
 }
 
 bool APPPCStation::CanInteract(APPPlayerController* InteractingController) const

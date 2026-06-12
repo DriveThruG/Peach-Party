@@ -34,6 +34,7 @@ public:
 	APPPCStation();
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void BeginPlay() override;                                 // ensures the station model is loaded
 	virtual void OnConstruction(const FTransform& Transform) override; // applies bHidePlaceholderBlocks live
 
 	// ---- IPPInteractable (SERVER) ----
@@ -64,6 +65,9 @@ protected:
 	/** Hide the placeholder desk + screen cubes (default true now that StationMesh has the real model). */
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Station")
 	bool bHidePlaceholderBlocks = true;
+
+	/** Hide/show the placeholder cubes based on bHidePlaceholderBlocks AND whether a model is present. */
+	void ApplyPlaceholderVisibility();
 
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Station")
 	UStaticMeshComponent* DeskMesh;
