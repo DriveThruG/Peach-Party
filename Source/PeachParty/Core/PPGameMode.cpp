@@ -2,6 +2,8 @@
 #include "Core/PPGameState.h"
 #include "Core/PPPlayerState.h"
 #include "Core/PPPlayerController.h"
+#include "Core/PPTeamPlayerStart.h"
+#include "EngineUtils.h" // TActorIterator
 #include "Core/PPCharacter.h"
 #include "Minigame/PPMinigameBase.h"
 #include "Minigame/PPPeachBasketGame.h"
@@ -108,7 +110,13 @@ void APPGameMode::BuildPlaceholderHub()
 
 AActor* APPGameMode::ChoosePlayerStart_Implementation(AController* Player)
 {
-	// Prefer real PlayerStarts placed in the level.
+	// Prefer a team-tagged start the user placed in the level (matches the player's team).
+	if (AActor* TeamStart = ChooseTeamStart(Player))
+	{
+		return TeamStart;
+	}
+
+	// Then any plain PlayerStart placed in the level.
 	if (AActor* Existing = Super::ChoosePlayerStart_Implementation(Player))
 	{
 		return Existing;
@@ -128,6 +136,45 @@ AActor* APPGameMode::ChoosePlayerStart_Implementation(AController* Player)
 	FActorSpawnParameters P;
 	P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	return World->SpawnActor<APlayerStart>(APlayerStart::StaticClass(), Loc, FRotator::ZeroRotator, P);
+}
+
+AActor* APPGameMode::ChooseTeamStart(AController* Player) const
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return nullptr;
+	}
+
+	// The spawning player's team (None in the lobby before AssignTeams runs).
+	EPPTeam Team = EPPTeam::None;
+	if (Player)
+	{
+		if (const APPPlayerState* PS = Player->GetPlayerState<APPPlayerState>())
+		{
+			Team = PS->GetTeam();
+		}
+	}
+
+	// Gather all placed team-starts; prefer ones matching this player's team.
+	TArray<APPTeamPlayerStart*> All;
+	TArray<APPTeamPlayerStart*> Matching;
+	for (TActorIterator<APPTeamPlayerStart> It(World); It; ++It)
+	{
+		APPTeamPlayerStart* Start = *It;
+		All.Add(Start);
+		if (Start->Team == Team)
+		{
+			Matching.Add(Start);
+		}
+	}
+
+	const TArray<APPTeamPlayerStart*>& Pool = (Matching.Num() > 0) ? Matching : All;
+	if (Pool.Num() == 0)
+	{
+		return nullptr; // none placed -> caller falls back to plain PlayerStarts / spread spawn
+	}
+	return Pool[FMath::RandRange(0, Pool.Num() - 1)];
 }
 
 void APPGameMode::PostLogin(APlayerController* NewPlayer)

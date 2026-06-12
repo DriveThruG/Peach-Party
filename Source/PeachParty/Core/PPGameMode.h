@@ -37,6 +37,9 @@ public:
 	/** Spread players out when the level has no PlayerStarts (placeholder hub). */
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
+	/** Pick a placed APPTeamPlayerStart matching the player's team (nullptr if none placed). */
+	AActor* ChooseTeamStart(AController* Player) const;
+
 	/** Called by PC stations whenever a player's ready flag flips during Lobby. */
 	void NotifyReadyStateChanged();
 
@@ -96,7 +99,9 @@ public:
 	TSubclassOf<APPMinigameBase> ArtilleryGameClass;
 
 	// ---- Placeholder test hub (built at runtime so the project is playable with no level art) ----
-	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Placeholder")
+	// `config`: set bSpawnPlaceholderHub=False in Config/DefaultGame.ini once you place your OWN
+	// PC stations + team spawns in the level, so the runtime hub doesn't spawn on top of them.
+	UPROPERTY(EditDefaultsOnly, Config, Category = "PeachParty|Placeholder")
 	bool bSpawnPlaceholderHub = true;
 
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Placeholder")

@@ -292,6 +292,12 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-12** — Placeable level actors (user builds the level by hand instead of runtime-spawn):
+  new `Core/PPTeamPlayerStart` (APlayerStart + `Team` enum, editor arrow tinted blue/red). `APPGameMode`
+  `ChooseTeamStart` spawns each player at a placed start matching their team (falls back to plain
+  PlayerStarts → spread spawn). `APPPCStation` was already a placeable Actor — drop it from Place Actors.
+  `bSpawnPlaceholderHub` is now `config` (DefaultGame.ini) — uncomment `bSpawnPlaceholderHub=False` once
+  the user's own stations/spawns are placed so the runtime hub doesn't spawn on top.
 - **2026-06-11** — Added `UPPGameInstance::JoinByIP(FString)` (BlueprintCallable) — direct ClientTravel
   to a host IP, bypassing the flaky NULL LAN beacon (firewall-blocked across machines). Reliable demo
   path: host hosts, joiner types the host's IP (or 127.0.0.1 for local 2-process) → connect.
