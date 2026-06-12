@@ -57,6 +57,11 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") FVector2D HoopLeftPos = FVector2D(0.08, 0.62);
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") FVector2D HoopRightPos = FVector2D(0.92, 0.62);
 
+	// Start coordinates (normalised). 4 chars: index 0,1 = team A (left), 2,3 = team B (right).
+	// Defaults set in the constructor; edit per element in a BP subclass. Ball start too.
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") TArray<FVector2D> CharStartPositions;
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") FVector2D BallStartPos = FVector2D(0.5, 0.5);
+
 private:
 	// Server-only simulation state (parallel to RepState.Chars by index).
 	TArray<FVector2D> CharVel;

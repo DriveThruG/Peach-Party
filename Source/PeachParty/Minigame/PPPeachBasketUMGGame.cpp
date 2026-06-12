@@ -7,6 +7,12 @@ APPPeachBasketUMGGame::APPPeachBasketUMGGame()
 	PrimaryActorTick.bCanEverTick = true;
 	MinigameType = EMinigameType::PeachBasket;
 	Duration = 120.f; // 2 minutes, then most points wins (tie = both win, via base ForceResolve)
+
+	// Default start spots (on the floor): A on the left, B on the right.
+	CharStartPositions = {
+		FVector2D(0.25, GroundY), FVector2D(0.38, GroundY), // team A
+		FVector2D(0.62, GroundY), FVector2D(0.75, GroundY)  // team B
+	};
 }
 
 void APPPeachBasketUMGGame::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -25,7 +31,6 @@ void APPPeachBasketUMGGame::OnMinigameStarted()
 
 void APPPeachBasketUMGGame::SetupField()
 {
-	const float StartX[4] = { 0.25f, 0.38f, 0.62f, 0.75f };
 	const int32 Teams[4]  = { 1, 1, 2, 2 };           // 1 = A (left), 2 = B (right)
 	const int32 Variants[4] = { 1, 2, 3, 4 };
 	const float Phases[4] = { 0.f, 1.6f, 3.1f, 4.7f };
@@ -36,7 +41,7 @@ void APPPeachBasketUMGGame::SetupField()
 	for (int32 i = 0; i < 4; ++i)
 	{
 		FPPBasketChar C;
-		C.Pos = FVector2D(StartX[i], GroundY);
+		C.Pos = CharStartPositions.IsValidIndex(i) ? CharStartPositions[i] : FVector2D(0.25 + i * 0.15, GroundY);
 		C.Team = Teams[i];
 		C.Variant = Variants[i];
 		RepState.Chars.Add(C);
@@ -46,7 +51,7 @@ void APPPeachBasketUMGGame::SetupField()
 
 	RepState.HoopLeft  = HoopLeftPos;
 	RepState.HoopRight = HoopRightPos;
-	RepState.Ball = FVector2D(0.5, 0.5);
+	RepState.Ball = BallStartPos;
 	RepState.ScoreA = 0;
 	RepState.ScoreB = 0;
 
@@ -227,16 +232,15 @@ void APPPeachBasketUMGGame::DoScore(EPPTeam ScoringTeam)
 
 void APPPeachBasketUMGGame::ResetPositions()
 {
-	const float StartX[4] = { 0.25f, 0.38f, 0.62f, 0.75f };
 	for (int32 i = 0; i < RepState.Chars.Num(); ++i)
 	{
-		RepState.Chars[i].Pos = FVector2D(StartX[i], GroundY);
+		RepState.Chars[i].Pos = CharStartPositions.IsValidIndex(i) ? CharStartPositions[i] : FVector2D(0.25 + i * 0.15, GroundY);
 		RepState.Chars[i].ArmAngle = 0.f;
 		RepState.Chars[i].bCharging = false;
 		RepState.Chars[i].bHoldsBall = false;
 		if (CharVel.IsValidIndex(i)) { CharVel[i] = FVector2D::ZeroVector; }
 	}
-	RepState.Ball = FVector2D(0.5, 0.5);
+	RepState.Ball = BallStartPos;
 	BallVel = FVector2D::ZeroVector;
 	BallHolder = -1;
 	ThrowCooldown = 0.f;
