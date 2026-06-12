@@ -212,6 +212,15 @@ void APPGameMode::EnterLobbyPhase()
 void APPGameMode::NotifyReadyStateChanged()
 {
 	APPGameState* GS = GetPPGameState();
+
+	// Diagnostic: shows exactly why the round does/doesn't start.
+	UE_LOG(LogTemp, Log, TEXT("[PeachParty] ReadyChanged: phase=%d players=%d ready=%d need>=%d -> allReady=%d"),
+		GS ? (int32)GS->GetCurrentPhase() : -1,
+		GS ? GS->NumPlayers() : -1,
+		GS ? GS->NumReadyPlayers() : -1,
+		MinPlayersToStart,
+		AreAllPlayersReady() ? 1 : 0);
+
 	if (!GS || GS->GetCurrentPhase() != EMatchPhase::Lobby)
 	{
 		return;
