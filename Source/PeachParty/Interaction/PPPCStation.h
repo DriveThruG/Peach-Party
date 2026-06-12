@@ -34,6 +34,7 @@ public:
 	APPPCStation();
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void OnConstruction(const FTransform& Transform) override; // applies bHidePlaceholderBlocks live
 
 	// ---- IPPInteractable (SERVER) ----
 	virtual void ServerInteract(APPPlayerController* InteractingController) override;
@@ -53,6 +54,16 @@ public:
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Station")
 	USceneComponent* SceneRoot;
+
+	/** Optional custom model for the whole station. Assign your imported mesh here (per placed instance
+	 *  in the Details panel, or in a BP child). Set bHidePlaceholderBlocks=true to hide the desk/screen
+	 *  cubes when you use it. Import your multi-part FBX with "Combine Meshes" ON so it's ONE mesh. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PeachParty|Station")
+	UStaticMeshComponent* StationMesh;
+
+	/** Hide the placeholder desk + screen cubes (use when you've set your own StationMesh). */
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Station")
+	bool bHidePlaceholderBlocks = false;
 
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Station")
 	UStaticMeshComponent* DeskMesh;
