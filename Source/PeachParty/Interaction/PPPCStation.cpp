@@ -26,7 +26,7 @@ APPPCStation::APPPCStation()
 	StationMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StationMesh"));
 	StationMesh->SetupAttachment(SceneRoot);
 	StationMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	StationMesh->SetRelativeScale3D(FVector(100.f)); // imported model is tiny -> 100x (tune per instance)
+	StationMesh->SetRelativeScale3D(FVector(0.1f)); 
 	if (StationModel.Succeeded()) { StationMesh->SetStaticMesh(StationModel.Object); }
 
 	// Desk (a wide low block). Components are siblings under SceneRoot so scales don't cascade.
