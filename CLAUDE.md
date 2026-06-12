@@ -292,6 +292,10 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-12** — PC station uses the user's real model: `APPPCStation` loads
+  `/Game/PeachParty/Interactables/PP_PC_Station` into a new `StationMesh` component by path;
+  `bHidePlaceholderBlocks` now defaults true (desk/screen cubes hidden, via `OnConstruction`). Per-instance
+  override still possible in Details. (Asset lives in the user's Content — must be pushed to the repo.)
 - **2026-06-12** — Placeable level actors (user builds the level by hand instead of runtime-spawn):
   new `Core/PPTeamPlayerStart` (APlayerStart + `Team` enum, editor arrow tinted blue/red). `APPGameMode`
   `ChooseTeamStart` spawns each player at a placed start matching their team (falls back to plain

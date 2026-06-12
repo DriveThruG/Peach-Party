@@ -15,14 +15,17 @@ APPPCStation::APPPCStation()
 	bReplicates = true;
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMesh(TEXT("/Engine/BasicShapes/Cube.Cube"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> StationModel(TEXT("/Game/PeachParty/Interactables/PP_PC_Station.PP_PC_Station"));
 
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
 
-	// Optional custom model for the whole station (empty by default — assign your imported mesh here).
+	// The user's imported station model. Resolves by path on the user's machine; placeholder cubes are
+	// hidden by default now that a real mesh exists (see bHidePlaceholderBlocks + OnConstruction).
 	StationMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StationMesh"));
 	StationMesh->SetupAttachment(SceneRoot);
 	StationMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	if (StationModel.Succeeded()) { StationMesh->SetStaticMesh(StationModel.Object); }
 
 	// Desk (a wide low block). Components are siblings under SceneRoot so scales don't cascade.
 	DeskMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DeskMesh"));

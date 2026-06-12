@@ -61,9 +61,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PeachParty|Station")
 	UStaticMeshComponent* StationMesh;
 
-	/** Hide the placeholder desk + screen cubes (use when you've set your own StationMesh). */
+	/** Hide the placeholder desk + screen cubes (default true now that StationMesh has the real model). */
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Station")
-	bool bHidePlaceholderBlocks = false;
+	bool bHidePlaceholderBlocks = true;
 
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Station")
 	UStaticMeshComponent* DeskMesh;
