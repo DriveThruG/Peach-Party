@@ -44,8 +44,8 @@ void APPPeachBasketUMGGame::SetupField()
 		CharPhase.Add(Phases[i]);
 	}
 
-	RepState.HoopLeft  = FVector2D(0.08, 0.62);
-	RepState.HoopRight = FVector2D(0.92, 0.62);
+	RepState.HoopLeft  = HoopLeftPos;
+	RepState.HoopRight = HoopRightPos;
 	RepState.Ball = FVector2D(0.5, 0.5);
 	RepState.ScoreA = 0;
 	RepState.ScoreB = 0;
@@ -85,6 +85,7 @@ void APPPeachBasketUMGGame::ServerTick(float Dt)
 
 		// Integrate motion.
 		CharVel[i].Y -= Gravity * Dt;
+		CharVel[i].X *= FMath::Max(0.f, 1.f - AirDrag * Dt); // always-on horizontal damping (less floaty drift)
 		C.Pos += CharVel[i] * Dt;
 
 		// Floor.
@@ -92,7 +93,7 @@ void APPPeachBasketUMGGame::ServerTick(float Dt)
 		{
 			C.Pos.Y = GroundY;
 			if (CharVel[i].Y < 0.0) { CharVel[i].Y = 0.0; }
-			CharVel[i].X *= FMath::Max(0.f, 1.f - 4.f * Dt); // ground friction
+			CharVel[i].X *= FMath::Max(0.f, 1.f - SlideFriction * Dt); // extra ground friction (less slide)
 		}
 		// Side walls.
 		if (C.Pos.X < MinX) { C.Pos.X = MinX; CharVel[i].X =  FMath::Abs(CharVel[i].X) * 0.3; }

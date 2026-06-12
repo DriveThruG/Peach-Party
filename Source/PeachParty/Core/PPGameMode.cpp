@@ -40,6 +40,15 @@ void APPGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Prefer a designer Blueprint subclass of the UMG basket if one exists at this path — lets you tune
+	// ALL basket values (floor, hoops, jump, slide…) LIVE in the editor without rebuilding. Falls back
+	// to the C++ class if the BP isn't there (quiet — no warning).
+	if (UClass* BP = LoadClass<APPMinigameBase>(nullptr,
+		TEXT("/Game/PeachParty/Blueprints/BP_PeachBasketUMG.BP_PeachBasketUMG_C"), nullptr, LOAD_Quiet | LOAD_NoWarn))
+	{
+		BasketGameClass = BP;
+	}
+
 	if (HasAuthority() && bSpawnPlaceholderHub)
 	{
 		BuildPlaceholderHub();

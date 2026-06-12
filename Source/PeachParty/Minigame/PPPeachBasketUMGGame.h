@@ -39,18 +39,23 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "PeachParty|Basket")
 	FPPBasketState RepState;
 
-	// ---- Tunables (normalised units; field is 0..1) ----
+	// ---- Tunables (normalised units; field is 0..1, Y: 0 = bottom, 1 = top) ----
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") int32 TargetScore = 5;
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") float Gravity = 1.4f;
-	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") float JumpImpulse = 0.95f;
-	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") float MaxLean = 0.5f;       // radians (~28°)
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") float JumpImpulse = 0.6f;   // lower = lower jumps
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") float MaxLean = 0.4f;       // radians; lower = less sideways drift
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") float LeanFreq = 2.2f;      // pendulum speed
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") float SlideFriction = 8.f;  // ground horizontal damping (higher = less slide)
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") float AirDrag = 1.0f;       // always-on horizontal damping (curbs floaty drift)
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") float ArmRaiseRate = 2.0f;  // 0..1 per second
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") float ThrowFlightTime = 0.9f;
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") float GrabRange = 0.075f;
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") float ScoreRange = 0.06f;
-	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") float GroundY = 0.18f;      // char centre rest height
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") float GroundY = 0.18f;      // char rest height — set to your background's FLOOR line
 	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") float BallFloorY = 0.10f;   // ball rest height
+	// Layout: match these to where your hoop images sit (normalised). A scores in the RIGHT hoop.
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") FVector2D HoopLeftPos = FVector2D(0.08, 0.62);
+	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Basket") FVector2D HoopRightPos = FVector2D(0.92, 0.62);
 
 private:
 	// Server-only simulation state (parallel to RepState.Chars by index).
