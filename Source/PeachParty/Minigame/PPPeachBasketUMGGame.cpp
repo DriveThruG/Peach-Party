@@ -23,6 +23,22 @@ void APPPeachBasketUMGGame::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 
 void APPPeachBasketUMGGame::OnMinigameStarted()
 {
+	// Free-play (solo tuning preview): kill the round timer so the field stays up indefinitely. The base
+	// arms the Duration timer right AFTER this call, only when Duration > 0 — so zeroing it here suppresses it.
+	if (bFreePlay)
+	{
+		Duration = 0.f;
+	}
+
+	if (HasAuthority())
+	{
+		SetupField();
+	}
+}
+
+void APPPeachBasketUMGGame::DebugResetField()
+{
+	// Re-read every layout/start tunable and rebuild the field — live, no PIE restart.
 	if (HasAuthority())
 	{
 		SetupField();
@@ -225,7 +241,8 @@ void APPPeachBasketUMGGame::DoScore(EPPTeam ScoringTeam)
 	RepState.ScoreA = Player1Score; // base slot1 = team A
 	RepState.ScoreB = Player2Score;
 
-	if (Player1Score >= TargetScore)      { FinishWithResult(EMatchResult::Player1); }
+	if (bFreePlay)                        { ResetPositions(); } // solo preview: never ends, just resets
+	else if (Player1Score >= TargetScore) { FinishWithResult(EMatchResult::Player1); }
 	else if (Player2Score >= TargetScore) { FinishWithResult(EMatchResult::Player2); }
 	else                                  { ResetPositions(); }
 }

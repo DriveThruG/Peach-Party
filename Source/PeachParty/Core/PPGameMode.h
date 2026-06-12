@@ -121,9 +121,16 @@ public:
 	UPROPERTY(EditDefaultsOnly, Config, Category = "PeachParty|Debug")
 	bool bDebugSkipToBasket = false;
 
+	/** SOLO tuning preview: drop a SINGLE PIE player straight into a free-play Peach Basket (no opponent
+	 *  needed, no time limit, scoring just resets) so you can tune the layout/feel without launching two
+	 *  PIE processes. Implies the skip. `config` → flip it in Config/DefaultGame.ini, no Blueprint needed. */
+	UPROPERTY(EditDefaultsOnly, Config, Category = "PeachParty|Debug")
+	bool bDebugSoloBasket = false;
+
 protected:
 	void BuildPlaceholderHub();
 	void TryDebugAutoStart(); // polls for enough players, then jumps to the minigame phase
+	void StartSoloBasketPreview(); // solo free-play basket for live tuning (bDebugSoloBasket)
 	FTimerHandle DebugStartTimer;
 	// ---- Lobby ----
 	bool AreAllPlayersReady() const;

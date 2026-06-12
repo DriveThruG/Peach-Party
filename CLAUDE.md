@@ -263,8 +263,18 @@ pull`/build. **Always `git pull` first** — the user pushes `.uasset`/`.umap` f
   tunables for LIVE editor tuning (no rebuild): `GroundY`, `HoopLeftPos/HoopRightPos`,
   `CharStartPositions[4]`, `BallStartPos`, `JumpImpulse`, `SlideFriction/AirDrag/MaxLean`, `ThrowFlightTime`,
   `GrabRange/ScoreRange`, `TargetScore`. **Next:** user tunes these to match their `WBP_BasketGame` layout.
+- **LIVE TUNING (no compile, no PIE restart):** the basket tunables are now `EditAnywhere`, so you select
+  the RUNNING match actor in the PIE World Outliner and drag the values in Details. Feel values
+  (`JumpImpulse`/`SlideFriction`/`MaxLean`/`Gravity`/…) are read every Tick → apply INSTANTLY. Layout/start
+  values (`HoopLeft/RightPos`/`CharStartPositions`/`BallStartPos`/`GroundY`) take effect on the next score
+  reset or when you click the **`DebugResetField`** button (a CallInEditor button in Details). When happy,
+  bake the values into `BP_PeachBasketUMG` defaults so they persist.
+- **SOLO preview** (`bDebugSoloBasket=True` in DefaultGame.ini, PIE players = 1): drops ONE player straight
+  into a FREE-PLAY basket (no opponent, no 120s timer, scoring just resets) so you tune without launching
+  two PIE processes. You drive the LEFT chars (team A, shoot the RIGHT hoop); the right chars stand idle as
+  targets. Implemented via `bFreePlay` on the basket + `APPGameMode::StartSoloBasketPreview`.
 - Config flags (`Config/DefaultGame.ini`): `bDebugSkipToBasket=True` (straight into basket on PIE; still
-  needs 2 players), `bSpawnPlaceholderHub` default false.
+  needs 2 players), `bDebugSoloBasket` (1-player free-play tuning, default off), `bSpawnPlaceholderHub` false.
 
 ### Still TODO / not built
 - Final arena level + 3 `APPObjectiveRoom` (RoomIndex 1/2/3) + `APPRefillStation`/`APPGrabbableObject`.
@@ -324,6 +334,13 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-12** — **Live basket tuning** (kill the edit→compile→PIE→close loop): (1) all
+  `PPPeachBasketUMGGame` tunables `EditDefaultsOnly`→`EditAnywhere` so the RUNNING actor is editable in the
+  PIE Details panel — feel values are read every Tick (instant), layout/start values apply via the new
+  `DebugResetField` CallInEditor button or a score reset. (2) **Solo free-play preview**: new
+  `bDebugSoloBasket` (config) + `APPGameMode::StartSoloBasketPreview` drops ONE PIE player into a
+  no-opponent/no-timer basket (basket `bFreePlay`: skips the Duration timer in `OnMinigameStarted`, never
+  finishes on score) so tuning needs only one PIE process. UNVERIFIED — user compiles next.
 - **2026-06-12** — Session close-out. UMG basket polish: `WBP_BasketGame` built by user (works);
   `UPPBasketWidgetLib::SetCanvasPos`/`RadToDeg` helpers; `BP_PeachBasketUMG` auto-preferred by GameMode
   for live tuning; exposed `GroundY`/`HoopLeftPos`/`HoopRightPos`/`CharStartPositions[4]`/`BallStartPos`

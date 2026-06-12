@@ -54,7 +54,7 @@ void APPGameMode::BeginPlay()
 		BuildPlaceholderHub();
 	}
 
-	if (HasAuthority() && bDebugSkipToBasket)
+	if (HasAuthority() && (bDebugSkipToBasket || bDebugSoloBasket))
 	{
 		// Poll until players have joined, then jump straight into the basket round (see TryDebugAutoStart).
 		GetWorldTimerManager().SetTimer(DebugStartTimer, this, &APPGameMode::TryDebugAutoStart, 0.5f, true);
@@ -69,13 +69,73 @@ void APPGameMode::TryDebugAutoStart()
 		GetWorldTimerManager().ClearTimer(DebugStartTimer);
 		return;
 	}
-	if (GS->NumPlayers() < FMath::Max(2, MinPlayersToStart))
+	// Solo preview needs just ONE player; the normal skip still wants a full 1v1.
+	const int32 Needed = bDebugSoloBasket ? 1 : FMath::Max(2, MinPlayersToStart);
+	if (GS->NumPlayers() < Needed)
 	{
 		return; // still waiting for the PIE clients to connect
 	}
 	GetWorldTimerManager().ClearTimer(DebugStartTimer);
 	AssignTeams();
-	StartMinigamePhase(); // round 0 = Peach Basket
+
+	if (bDebugSoloBasket)
+	{
+		StartSoloBasketPreview();
+	}
+	else
+	{
+		StartMinigamePhase(); // round 0 = Peach Basket
+	}
+}
+
+void APPGameMode::StartSoloBasketPreview()
+{
+	APPGameState* GS = GetPPGameState();
+	if (!GS || GS->PlayerArray.Num() == 0)
+	{
+		return;
+	}
+
+	APPPlayerState* Solo = Cast<APPPlayerState>(GS->PlayerArray[0]);
+	if (!Solo)
+	{
+		return;
+	}
+
+	GS->SetPhase(EMatchPhase::Minigame);
+	bMinigamePhaseResolved = true; // free-play: don't run the normal phase bookkeeping/scoring/advance
+	ArenaSlotInUse.Init(false, FMath::Max(MaxPlayers, 2));
+
+	const int32 Slot = AllocateArenaSlot();
+	const FVector ArenaOrigin(Slot * ArenaSpacing, 0.f, 100000.f);
+
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	APPMinigameBase* Match = GetWorld()->SpawnActor<APPMinigameBase>(
+		BasketGameClass, ArenaOrigin, FRotator::ZeroRotator, Params);
+	if (!Match)
+	{
+		FreeArenaSlot(Slot);
+		return;
+	}
+	Match->ArenaSlotIndex = Slot;
+
+	// Free-play: the lone player drives Team A (chars 0,1); chars 2,3 stand idle as targets. Same player
+	// in both slots avoids a null Player2; the basket's bFreePlay disables the timer + match-end scoring.
+	if (APPPeachBasketUMGGame* Basket = Cast<APPPeachBasketUMGGame>(Match))
+	{
+		Basket->bFreePlay = true;
+	}
+	Match->StartMinigame(Solo, Solo);
+
+	Solo->SetCurrentMinigame(Match);
+	if (APPPlayerController* PC = Cast<APPPlayerController>(Solo->GetOwningController()))
+	{
+		PC->SetServerViewTarget(Match);
+	}
+	GS->AddActiveMinigame(Match);
+	++LiveMatchCount;
 }
 
 void APPGameMode::BuildPlaceholderHub()
