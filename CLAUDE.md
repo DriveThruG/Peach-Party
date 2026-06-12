@@ -227,42 +227,67 @@ exists. (Claude can't author/delete `.umap` files from the headless box, hence r
 An optional directional light is gated by `bSpawnPlaceholderLight` (**default false** — the level's own
 lighting otherwise "competes" with it; only enable on a truly empty level).
 
-## 9. Current state
+## 9. Current state  — END OF SESSION 2026-06-12 (READ THIS)
 
-**Last verified compile:** 2026-06-11, before the latest combat round. Everything written after that
-(grab/throw, refill stations, team-coloured water + splash, fuller slip) is **UNVERIFIED** — the user
-will paste compile errors next session. Their explicit ask: *"Fixe einfach alles was du findest, falls
-kompilierfehler auftauchen schicke ich dir das."*
+**The project compiles & runs.** Lots was verified live this session (menu, lobby, teams, minigame
+start). Workflow unchanged: Claude can't compile here; user builds on Windows, pastes errors, `git
+pull`/build. **Always `git pull` first** — the user pushes `.uasset`/`.umap` from Windows between turns.
 
-- ✅ Code backbone for ALL phases: Lobby/Ready/Teams → Minigame matchmaker (basket + artillery) →
-  Reward selection → Final phase (frontline 3-room capture, classes, water-gun combat, grab/throw,
-  refill stations, slip+respawn).
-- ✅ FP character (walk/sprint/jump/crouch + Fire/Grab/Interact/Spectate/MG inputs).
-- ✅ Main menu plumbing: `Menu/PPGameInstance` (HostGame/FindGames/JoinGameByIndex via
-  `OnlineSubsystem Null` / LAN), `FPPServerEntry`, BlueprintAssignable delegates for UMG to bind.
-- 🔲 **User must do in-editor** (Claude can't touch `.uasset`/`.umap`):
-  - Create `/Game/Maps/PeachPartyHub` (the empty default level).
-  - Build the final arena level + place 3 `APPObjectiveRoom` (RoomIndex 1/2/3 with spawn points),
-    `APPRefillStation` and `APPGrabbableObject` actors.
-  - Build UMG widgets bound to replicated `APPGameState` data: ready count / score / round-result
-    (hook `BP_OnRoundResult`) / reward-pick menu / main menu (server list via `PPGameInstance`).
-  - Optional cosmetic BPs: `BP_OnImpact(Loc, Team)` splash, `BP_OnSlip` reaction.
-- 🔲 **Known design gaps / not built:** real ragdoll (needs skeletal mesh + physics asset), proper
-  HUD, late-joiner / disconnect handling, end-of-match screen, global-timeout race in `OnRoundComplete`.
+### What works now
+- ✅ **Menu flow:** `WBP_MainMenu` → `WBP_MultiplayerMenu` (Host + an IP textbox + Connect). **Host works**
+  (listens on 7777). **LAN server-list discovery does NOT work on the user's network** (firewall blocks
+  the NULL beacon → `FindGames` returns `found=0`). **Use `UPPGameInstance::JoinByIP`** + `127.0.0.1`
+  (local 2-proc) or the host's IP. `WBP_ServerBrowser`/`WBP_ServerEntry` exist but are unused (can delete).
+- ✅ **MainMenu map** uses `Menu/PPMenuGameMode` (no pawn). `APPCharacter::PawnClientRestart` restores
+  game-input + clears leftover menu widgets on lobby entry.
+- ✅ **Teams assigned ON JOIN** (`PickJoinTeam`, balanced: 1st→A, 2nd→B…) so lobby spawns are correct.
+  Start now requires **≥1 ready player per team** (a minigame is 1v1 → both sides must be filled).
+- ✅ **UMG Peach Basket** — the big new thing (see below). GameMode round 0 spawns it.
+- ✅ **Placeable level actors** (user builds the level by hand; `bSpawnPlaceholderHub=false`):
+  `APPTeamAPlayerStart` (blue arrow) / `APPTeamBPlayerStart` (red) for spawns; `APPPCStation` (placeholder
+  desk+screen cubes, optional `StationMesh` + `bHidePlaceholderBlocks`). Seated PC = fade-to-black hold;
+  PC seat cam = perspective, minigames = ortho.
+- ✅ Fixed "players half in floor" (`BodyMesh` Z 0). Note: imported floor meshes need collision added
+  (Static Mesh editor → Add Box Simplified Collision) or players fall through.
+
+### UMG Peach Basket (minimal-BP minigame) — current focus
+- `Minigame/PPPeachBasketUMGGame` runs the whole 1v1 server-side in normalised 2D (no PhysX/3D), replicates
+  `FPPBasketState` (`PPBasketUMGTypes.h`). Mechanics: one input (Primary) = jump-along-lean (pendulum →
+  sideways) + raise arms; release = auto-aim throw at enemy hoop scaled by arm height; hands grab/steal
+  ALWAYS; 5 to win / 120s. `GetState()` for the widget.
+- **`WBP_BasketGame`** (user built, at `/Game/PeachParty/UI/`) — Tick reads `GetState()` and positions
+  Images via `UPPBasketWidgetLib::SetCanvasPos` (normalised→canvas). Auto-shown by
+  `APPPlayerController::PlayerTick`/`UpdateMinigameHud` while viewing a UMG basket (`GetViewedMinigame`).
+- **`BP_PeachBasketUMG`** — user creates this as a BP child of `PPPeachBasketUMGGame` at
+  `/Game/PeachParty/Blueprints/`; GameMode `BeginPlay` auto-prefers it (LoadClass). It exposes **all**
+  tunables for LIVE editor tuning (no rebuild): `GroundY`, `HoopLeftPos/HoopRightPos`,
+  `CharStartPositions[4]`, `BallStartPos`, `JumpImpulse`, `SlideFriction/AirDrag/MaxLean`, `ThrowFlightTime`,
+  `GrabRange/ScoreRange`, `TargetScore`. **Next:** user tunes these to match their `WBP_BasketGame` layout.
+- Config flags (`Config/DefaultGame.ini`): `bDebugSkipToBasket=True` (straight into basket on PIE; still
+  needs 2 players), `bSpawnPlaceholderHub` default false.
+
+### Still TODO / not built
+- Final arena level + 3 `APPObjectiveRoom` (RoomIndex 1/2/3) + `APPRefillStation`/`APPGrabbableObject`.
+- The OLD 3D `PPPeachBasketGame` + `PPPeachArtilleryGame` are still around; artillery still 3D (could port
+  to UMG like basket). Real ragdoll, proper HUD, end-of-match screen, late-join/disconnect.
 
 ## 9b. Where things live (file map)
 
 ```
 Source/PeachParty/
-  Core/           PPTypes, PPGameMode, PPGameState, PPPlayerState, PPPlayerController, PPCharacter, PPPlaceholderBlock
+  Core/           PPTypes, PPGameMode, PPGameState, PPPlayerState, PPPlayerController, PPCharacter,
+                  PPPlaceholderBlock, PPTeamPlayerStart (+ APPTeamA/BPlayerStart subclasses)
   Interaction/    PPInteractable (interface), PPPCStation
   Minigame/       PPVisual.h, PPMinigameBase,
-                  PPPeachBasketGame + PPBasketBall + PPBasketCharacter + PPBasket,
+                  PPPeachBasketGame + PPBasketBall + PPBasketCharacter + PPBasket (OLD 3D version),
+                  PPPeachBasketUMGGame + PPBasketUMGTypes.h + PPBasketWidgetLib (NEW UMG version),
                   PPPeachArtilleryGame + PPTank + PPProjectile + PPArtilleryTypes.h
   Final/          PPClassTypes.h, PPRewardTypes.h,
-                  PPWaterProjectile, PPObjectiveRoom,
-                  PPGrabbableObject, PPRefillStation
-  Menu/           PPGameInstance (LAN host/find/join)
+                  PPWaterProjectile, PPObjectiveRoom, PPGrabbableObject, PPRefillStation
+  Menu/           PPGameInstance (host/JoinByIP), PPMenuGameMode (no-pawn menu)
+Build.cs deps incl. UMG/Slate/SlateCore (needed for the widget HUD). PPGameMode is UCLASS(Config=Game).
+User-built content: WBP_MainMenu, WBP_MultiplayerMenu, WBP_BasketGame (+ WBP_ServerBrowser/Entry unused).
+User must create BP_PeachBasketUMG (child of PPPeachBasketUMGGame) at /Game/PeachParty/Blueprints/.
 ```
 
 ## 10. Conventions
@@ -278,20 +303,34 @@ Source/PeachParty/
 
 Read this file first, then before answering:
 
-1. **Check what user is asking.** Likely paths: (a) "here are my compile errors" → fix in the C++ files
-   listed in §9b, push, ask them to pull+rebuild; (b) "PIE crashes / something doesn't work in-game" →
-   ask for the exact log line + repro steps; (c) "how do I make the UMG widget for X" → click-by-click
-   guide referencing the replicated GameState fields in §4/§6/§6b.
-2. **Don't claim Final/Reward/Menu are TODO** — they're built (unverified). If errors come, the file
-   to edit is named in the error.
-3. **Don't try to compile.** No engine on this box. Push changes and let the user build.
+0. **`git pull --no-edit origin main` FIRST** — the user pushes `.uasset`/`.umap` between turns. Then
+   read §9 (END-OF-SESSION state). The live focus is the **UMG Peach Basket** — the user is building
+   `BP_PeachBasketUMG` and tuning it (floor/hoops/start positions/jump/slide) to match `WBP_BasketGame`.
+1. **Most likely asks:** (a) compile errors → fix the C++ file named in the error, push, ask to
+   pull+build; (b) "value X feels wrong in the basket" (jump/slide/throw/grab/layout) → it's a tunable on
+   `PPPeachBasketUMGGame` (§9), nudge the default OR tell them to drag it in `BP_PeachBasketUMG` (live, no
+   build); (c) widget node help → reference `GetState()` + `UPPBasketWidgetLib::SetCanvasPos`; (d)
+   multiplayer "can't find server" → it's the firewall/NULL beacon, steer to `JoinByIP` + `127.0.0.1`.
+2. **Can't read `.uasset`/`.umap`** (binary). For widget/layout debugging, ask the user to paste the graph
+   as T3D text (select nodes → Ctrl+C) or send a screenshot.
+3. **Don't try to compile.** No engine on this box. Push and let the user build. New `.h`/`.cpp` files →
+   tell them to **Generate VS project files** before building; edits-only → just build.
 4. **Repo:** `git@github.com:DriveThruG/Peach-Party.git` (SSH from this box). User pulls via HTTPS.
-   Standard close-out: `git add -A && git commit -m "…" && git push origin main`.
+   Close-out: `git add -A && git commit -m "…" && git push origin main`. If their push is rejected, they
+   need `git pull --no-edit` then push.
 5. **Honour the build gotchas in §3** — V6, `PublicIncludePaths.Add(ModuleDirectory)`, `bUseUnity=false`,
-   and **no member-shadow names** (warnings-as-errors).
+   **no member-shadow names** (e.g. `SpriteScale` clashed with `AActor`), and **LWC**: `FVector`/`FVector2D`
+   components are `double` — cast to `float` before `FMath::Max`/float assignment or it won't compile.
 
 ## 11. Changelog
 
+- **2026-06-12** — Session close-out. UMG basket polish: `WBP_BasketGame` built by user (works);
+  `UPPBasketWidgetLib::SetCanvasPos`/`RadToDeg` helpers; `BP_PeachBasketUMG` auto-preferred by GameMode
+  for live tuning; exposed `GroundY`/`HoopLeftPos`/`HoopRightPos`/`CharStartPositions[4]`/`BallStartPos`
+  + feel (`JumpImpulse` 0.6, `SlideFriction`, `AirDrag`, `MaxLean` 0.4). `bDebugSkipToBasket=True`.
+  Build.cs += UMG/Slate/SlateCore. Also this session: team-on-join + per-team-ready gate, placeable
+  TeamA/B PlayerStarts, station reverted to placeholder cubes, `bSpawnPlaceholderHub=false`, fixed
+  half-in-floor + seated fade-to-black, `JoinByIP` (LAN discovery is firewall-blocked → use it).
 - **2026-06-12** — UMG Peach Basket (minimal-BP minigame): new `Minigame/PPPeachBasketUMGGame` runs the
   whole game server-side in normalised 2D (no PhysX/3D placement) and replicates `FPPBasketState`
   (`PPBasketUMGTypes.h`): pendulum-lean jump (jump along the lean = sideways move), arms-up grab/steal
