@@ -179,6 +179,16 @@ AActor* APPGameMode::ChooseTeamStart(AController* Player) const
 
 void APPGameMode::PostLogin(APlayerController* NewPlayer)
 {
+	// Balance the team on JOIN, BEFORE Super spawns the pawn — so the lobby spawn already uses the right
+	// team's start AND both teams fill up (1st player -> A, 2nd -> B, 3rd -> A, ...).
+	if (NewPlayer)
+	{
+		if (APPPlayerState* PS = NewPlayer->GetPlayerState<APPPlayerState>())
+		{
+			PS->SetTeam(PickJoinTeam());
+		}
+	}
+
 	Super::PostLogin(NewPlayer);
 
 	if (APPGameState* GS = GetPPGameState())
@@ -188,6 +198,23 @@ void APPGameMode::PostLogin(APlayerController* NewPlayer)
 			EnterLobbyPhase();
 		}
 	}
+}
+
+EPPTeam APPGameMode::PickJoinTeam() const
+{
+	int32 A = 0, B = 0;
+	if (const APPGameState* GS = GetPPGameState())
+	{
+		for (APlayerState* PS : GS->PlayerArray)
+		{
+			if (const APPPlayerState* P = Cast<APPPlayerState>(PS))
+			{
+				if (P->GetTeam() == EPPTeam::TeamA) { ++A; }
+				else if (P->GetTeam() == EPPTeam::TeamB) { ++B; }
+			}
+		}
+	}
+	return (A <= B) ? EPPTeam::TeamA : EPPTeam::TeamB; // join the smaller team (A on a tie)
 }
 
 void APPGameMode::Logout(AController* Exiting)
@@ -252,7 +279,25 @@ bool APPGameMode::AreAllPlayersReady() const
 		return false;
 	}
 	const int32 Players = GS->NumPlayers();
-	return Players >= MinPlayersToStart && GS->NumReadyPlayers() == Players;
+	if (Players < MinPlayersToStart || GS->NumReadyPlayers() != Players)
+	{
+		return false;
+	}
+
+	// Require at least one READY player on EACH team — a minigame is 1v1, so both sides must be filled.
+	int32 ReadyA = 0, ReadyB = 0;
+	for (APlayerState* PS : GS->PlayerArray)
+	{
+		if (const APPPlayerState* P = Cast<APPPlayerState>(PS))
+		{
+			if (P->IsReady())
+			{
+				if (P->GetTeam() == EPPTeam::TeamA) { ++ReadyA; }
+				else if (P->GetTeam() == EPPTeam::TeamB) { ++ReadyB; }
+			}
+		}
+	}
+	return ReadyA >= 1 && ReadyB >= 1;
 }
 
 void APPGameMode::OnLobbyCountdownFinished()
@@ -277,16 +322,17 @@ void APPGameMode::AssignTeams()
 		return;
 	}
 
-	int32 Index = 0;
+	// Teams are normally set on join (PickJoinTeam). This only FILLS players still without a team
+	// (e.g. edge cases), preserving the join-time balance instead of re-alternating everyone.
 	for (APlayerState* PS : GS->PlayerArray)
 	{
-		APPPlayerState* PPPS = Cast<APPPlayerState>(PS);
-		if (!PPPS)
+		if (APPPlayerState* P = Cast<APPPlayerState>(PS))
 		{
-			continue;
+			if (P->GetTeam() == EPPTeam::None)
+			{
+				P->SetTeam(PickJoinTeam());
+			}
 		}
-		PPPS->SetTeam((Index % 2 == 0) ? EPPTeam::TeamA : EPPTeam::TeamB);
-		++Index;
 	}
 }
 

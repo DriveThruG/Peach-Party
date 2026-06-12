@@ -127,7 +127,8 @@ protected:
 	FTimerHandle DebugStartTimer;
 	// ---- Lobby ----
 	bool AreAllPlayersReady() const;
-	void AssignTeams();
+	void AssignTeams();                 // fills any teamless players (join-time PickJoinTeam does the rest)
+	EPPTeam PickJoinTeam() const;       // returns the smaller team (A on a tie) for a joining player
 	void OnLobbyCountdownFinished();
 
 	// ---- Minigame round matchmaker ----
