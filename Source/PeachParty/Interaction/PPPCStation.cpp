@@ -26,6 +26,7 @@ APPPCStation::APPPCStation()
 	StationMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StationMesh"));
 	StationMesh->SetupAttachment(SceneRoot);
 	StationMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	StationMesh->SetRelativeScale3D(FVector(100.f)); // imported model is tiny -> 100x (tune per instance)
 	if (StationModel.Succeeded()) { StationMesh->SetStaticMesh(StationModel.Object); }
 
 	// Desk (a wide low block). Components are siblings under SceneRoot so scales don't cascade.
@@ -48,11 +49,8 @@ APPPCStation::APPPCStation()
 	MinigameCamera->SetupAttachment(SceneRoot);
 	MinigameCamera->SetRelativeLocation(FVector(-70.f, 0.f, 150.f));
 	MinigameCamera->SetRelativeRotation(FRotator(0.f, 0.f, 0.f)); // faces +X toward the screen
-	// Seated = a flat "looking at the monitor" view -> orthographic too (matches the minigame look).
-	// OrthoWidth frames the screen mesh (~140 wide); raise it to show more around the monitor.
-	MinigameCamera->SetProjectionMode(ECameraProjectionMode::Orthographic);
-	MinigameCamera->SetOrthoWidth(SeatedOrthoWidth);
-	MinigameCamera->SetConstraintAspectRatio(false); // fill the whole viewport, no letterbox bars
+	// Seated view is PERSPECTIVE (you look at your 3D PC). Only the MINIGAMES use the flat ortho camera.
+	MinigameCamera->SetProjectionMode(ECameraProjectionMode::Perspective);
 
 	SeatPoint = CreateDefaultSubobject<USceneComponent>(TEXT("SeatPoint"));
 	SeatPoint->SetupAttachment(SceneRoot);

@@ -41,7 +41,9 @@ APPCharacter::APPCharacter()
 	BodyMesh->SetupAttachment(GetCapsuleComponent());
 	BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // the capsule handles collision
 	BodyMesh->SetOwnerNoSee(true);
-	BodyMesh->SetRelativeLocation(FVector(0.f, 0.f, -88.f)); // base at capsule bottom
+	// Cylinder pivot is its CENTER; scaled height is 176 (1.76 * 100). Origin at the capsule CENTRE (0)
+	// makes it span -88..+88 = exactly the capsule, so the base sits on the floor (was -88 -> sank 88u).
+	BodyMesh->SetRelativeLocation(FVector(0.f, 0.f, 0.f));
 	BodyMesh->SetRelativeScale3D(FVector(0.9f, 0.9f, 1.76f));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylMesh(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	if (CylMesh.Succeeded())

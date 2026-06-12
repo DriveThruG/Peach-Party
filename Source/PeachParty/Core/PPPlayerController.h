@@ -62,8 +62,8 @@ public:
 	UFUNCTION(Server, Reliable)
 	void ServerSelectReward(EPPReward Reward);
 
-	/** Local fade-to-black-and-back, used as a smooth transition on camera/phase changes. */
-	void PlayTransitionFade(float HalfSeconds = 0.25f);
+	/** Local fade-to-black; bHold = STAY black (no fade back) — used while seated at a PC, idle. */
+	void PlayTransitionFade(float HalfSeconds = 0.25f, bool bHold = false);
 
 	UFUNCTION(BlueprintPure, Category = "PeachParty|Interaction")
 	APPPCStation* GetSeatedStation() const { return SeatedStation; }

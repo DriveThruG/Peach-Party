@@ -147,7 +147,10 @@ void APPPlayerController::OnRep_View()
 	RefreshViewTarget();
 	if (IsLocalController())
 	{
-		PlayTransitionFade(); // smooth fade-to-black-and-back on every camera transition
+		// Seated at a PC but NOT in a minigame yet -> fade to black and HOLD ("you're at your PC,
+		// waiting"). Otherwise (entering a minigame, standing up, spectating) fade black-and-back.
+		const bool bSeatedIdle = (SeatedStation != nullptr) && (ServerViewTarget == nullptr);
+		PlayTransitionFade(0.25f, /*bHold=*/bSeatedIdle);
 	}
 }
 
@@ -166,11 +169,18 @@ void APPPlayerController::ServerSelectReward_Implementation(EPPReward Reward)
 	GS->SetTeamReward(PS->GetTeam(), Reward);
 }
 
-void APPPlayerController::PlayTransitionFade(float HalfSeconds)
+void APPPlayerController::PlayTransitionFade(float HalfSeconds, bool bHold)
 {
-	if (PlayerCameraManager && !GetWorldTimerManager().IsTimerActive(FadeTimer))
+	if (!PlayerCameraManager)
 	{
-		PlayerCameraManager->StartCameraFade(0.f, 1.f, HalfSeconds, FLinearColor::Black, false, /*bHoldWhenFinished=*/true);
+		return;
+	}
+	// Always (re)start the fade-to-black so a hold can't get stuck if timers overlap.
+	GetWorldTimerManager().ClearTimer(FadeTimer);
+	PlayerCameraManager->StartCameraFade(0.f, 1.f, HalfSeconds, FLinearColor::Black, false, /*bHoldWhenFinished=*/true);
+
+	if (!bHold)
+	{
 		GetWorldTimerManager().SetTimer(FadeTimer,
 			FTimerDelegate::CreateUObject(this, &APPPlayerController::FadeBackIn, HalfSeconds), HalfSeconds, false);
 	}

@@ -292,6 +292,11 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-12** — Station/seat/collision pass: (1) `StationMesh` scaled 100× (imported model was tiny).
+  (2) Fixed "players half in floor" — `BodyMesh` cylinder pivot is its centre, so origin at -88 sank it
+  88u below the capsule; moved to Z=0 (spans the capsule, base on floor). (3) PC-station `MinigameCamera`
+  back to **Perspective** (only minigames use ortho). (4) Sitting at a PC now fades to black and HOLDS
+  (`PlayTransitionFade(bHold)`); fades back in when the minigame starts / you stand up.
 - **2026-06-12** — PC station uses the user's real model: `APPPCStation` loads
   `/Game/PeachParty/Interactables/PP_PC_Station` into a new `StationMesh` component by path;
   `bHidePlaceholderBlocks` now defaults true (desk/screen cubes hidden, via `OnConstruction`). Per-instance
