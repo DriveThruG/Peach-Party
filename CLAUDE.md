@@ -292,6 +292,10 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-12** — Teams assigned on JOIN now (`PickJoinTeam` = smaller team, in `PostLogin` before the
+  pawn spawns) so the lobby spawn uses the right team's start; old alternate-`AssignTeams` removed
+  (`AssignTeams` now only fills teamless players). `AreAllPlayersReady` additionally requires ≥1 ready
+  player on EACH team (1v1 needs both sides). Diagnostic log kept in `NotifyReadyStateChanged`.
 - **2026-06-12** — User takes over level building: reverted PC station to placeholder desk+screen cubes
   (removed the PP_PC_Station path-load/100×/BeginPlay-load; `StationMesh` is now an empty optional slot,
   `bHidePlaceholderBlocks` default false). `bSpawnPlaceholderHub` default **false** (no runtime hub).
