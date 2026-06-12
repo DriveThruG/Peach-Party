@@ -7,6 +7,7 @@
 #include "Core/PPCharacter.h"
 #include "Minigame/PPMinigameBase.h"
 #include "Minigame/PPPeachBasketGame.h"
+#include "Minigame/PPPeachBasketUMGGame.h"
 #include "Minigame/PPPeachArtilleryGame.h"
 #include "Interaction/PPPCStation.h"
 #include "Core/PPPlaceholderBlock.h"
@@ -26,7 +27,7 @@ APPGameMode::APPGameMode()
 	PlayerControllerClass = APPPlayerController::StaticClass();
 	DefaultPawnClass = APPCharacter::StaticClass();
 
-	BasketGameClass = APPPeachBasketGame::StaticClass();
+	BasketGameClass = APPPeachBasketUMGGame::StaticClass(); // UMG version (switch back to APPPeachBasketGame for the 3D one)
 	ArtilleryGameClass = APPPeachArtilleryGame::StaticClass();
 }
 

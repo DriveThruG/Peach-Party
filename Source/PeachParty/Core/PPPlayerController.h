@@ -28,6 +28,12 @@ class PEACHPARTY_API APPPlayerController : public APlayerController
 
 public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void PlayerTick(float DeltaTime) override; // local: shows/hides the UMG minigame widget
+
+	/** The minigame the local player is currently viewing (their own match, or a spectated one).
+	 *  Bind your UMG minigame widget to this and cast it to the concrete game (e.g. PeachBasketUMGGame). */
+	UFUNCTION(BlueprintPure, Category = "PeachParty|Minigame")
+	AActor* GetViewedMinigame() const;
 
 	/** Client -> Server: "I want to interact with this actor." Server re-validates. */
 	UFUNCTION(Server, Reliable)
@@ -91,4 +97,10 @@ protected:
 
 	FTimerHandle FadeTimer;
 	void FadeBackIn(float Seconds);
+
+	// ---- UMG minigame widget (auto shown/hidden on the local client) ----
+	UPROPERTY(Transient)
+	class UUserWidget* MinigameHud = nullptr;
+
+	void UpdateMinigameHud(); // create/remove the widget to match GetViewedMinigame()
 };

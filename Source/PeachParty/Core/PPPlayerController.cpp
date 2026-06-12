@@ -4,6 +4,8 @@
 #include "Core/PPPlayerState.h"
 #include "Core/PPGameState.h"
 #include "Minigame/PPMinigameBase.h"
+#include "Minigame/PPPeachBasketUMGGame.h"
+#include "Blueprint/UserWidget.h"
 #include "Camera/PlayerCameraManager.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
@@ -16,6 +18,48 @@ void APPPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	// Camera state only matters to the local owner.
 	DOREPLIFETIME_CONDITION(APPPlayerController, SeatedStation, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(APPPlayerController, ServerViewTarget, COND_OwnerOnly);
+}
+
+void APPPlayerController::PlayerTick(float DeltaTime)
+{
+	Super::PlayerTick(DeltaTime);
+	if (IsLocalController())
+	{
+		UpdateMinigameHud();
+	}
+}
+
+AActor* APPPlayerController::GetViewedMinigame() const
+{
+	if (Cast<APPMinigameBase>(ServerViewTarget))
+	{
+		return ServerViewTarget;
+	}
+	if (const APPPlayerState* PS = GetPlayerState<APPPlayerState>())
+	{
+		return PS->GetCurrentMinigame();
+	}
+	return nullptr;
+}
+
+void APPPlayerController::UpdateMinigameHud()
+{
+	// Show the widget only while viewing a UMG-type minigame; remove it otherwise.
+	const bool bWantHud = Cast<APPPeachBasketUMGGame>(GetViewedMinigame()) != nullptr;
+
+	if (bWantHud && !MinigameHud)
+	{
+		if (UClass* WClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/PeachParty/UI/WBP_BasketGame.WBP_BasketGame_C")))
+		{
+			MinigameHud = CreateWidget<UUserWidget>(this, WClass);
+			if (MinigameHud) { MinigameHud->AddToViewport(50); }
+		}
+	}
+	else if (!bWantHud && MinigameHud)
+	{
+		MinigameHud->RemoveFromParent();
+		MinigameHud = nullptr;
+	}
 }
 
 void APPPlayerController::ServerRequestInteract_Implementation(AActor* TargetActor)

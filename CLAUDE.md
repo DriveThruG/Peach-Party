@@ -292,6 +292,14 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-12** — UMG Peach Basket (minimal-BP minigame): new `Minigame/PPPeachBasketUMGGame` runs the
+  whole game server-side in normalised 2D (no PhysX/3D placement) and replicates `FPPBasketState`
+  (`PPBasketUMGTypes.h`): pendulum-lean jump (jump along the lean = sideways move), arms-up grab/steal
+  (always active), auto-aim throw scaled by arm height, walls, score, 5-to-win / 120s. `GetState()` for
+  the widget. `APPPlayerController::PlayerTick` auto-spawns the widget at
+  `/Game/PeachParty/UI/WBP_BasketGame` while viewing such a match (`GetViewedMinigame()`). GameMode round
+  0 now spawns this UMG version (revert `BasketGameClass` to `APPPeachBasketGame` for the old 3D one).
+  USER builds `WBP_BasketGame` and binds images to GetState(). UNVERIFIED — compile errors next.
 - **2026-06-12** — Teams assigned on JOIN now (`PickJoinTeam` = smaller team, in `PostLogin` before the
   pawn spawns) so the lobby spawn uses the right team's start; old alternate-`AssignTeams` removed
   (`AssignTeams` now only fills teamless players). `AreAllPlayersReady` additionally requires ≥1 ready
