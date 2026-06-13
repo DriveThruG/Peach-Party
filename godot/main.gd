@@ -230,7 +230,7 @@ func _separate_players() -> void:
 func _ball_vs_players() -> void:
 	# The free ball bounces off player torsos (it can't pass through them). Grabbing still wins because
 	# the hand check runs first and reaches further than the torso.
-	var min_d := PLAYER_RADIUS + ball.radius
+	var min_d: float = PLAYER_RADIUS + ball.radius
 	for p in players:
 		var c: Vector2 = p.position + PLAYER_TORSO
 		var d: Vector2 = ball.position - c
