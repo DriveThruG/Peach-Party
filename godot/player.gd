@@ -48,7 +48,8 @@ var body: Node2D
 var shoulder_node: Node2D
 var arm: Sprite2D
 var hand: Marker2D
-var torso: Marker2D
+var torso_lo: Marker2D       # body collision capsule = segment from torso_lo to torso_hi (sways with lean)
+var torso_hi: Marker2D
 
 func setup(body_path: String, arm_path: String, key: int, phase: float, in_ground_y: float, in_facing: int) -> void:
 	charge_key = key
@@ -67,10 +68,13 @@ func setup(body_path: String, arm_path: String, key: int, phase: float, in_groun
 	body_spr.offset = Vector2(0, -BODY_HALF_H)
 	body.add_child(body_spr)
 
-	# Torso centre — a child of Body, so it sways with the lean. Used as the collision centre.
-	torso = Marker2D.new()
-	torso.position = Vector2(0, -BODY_HALF_H)
-	body.add_child(torso)
+	# Collision capsule endpoints — children of Body, so they sway with the lean.
+	torso_lo = Marker2D.new()
+	torso_lo.position = Vector2(0, -70)    # lower body
+	body.add_child(torso_lo)
+	torso_hi = Marker2D.new()
+	torso_hi.position = Vector2(0, -310)   # upper chest / head
+	body.add_child(torso_hi)
 
 	shoulder_node = Node2D.new()
 	shoulder_node.position = SHOULDER
@@ -90,8 +94,11 @@ func setup(body_path: String, arm_path: String, key: int, phase: float, in_groun
 func hand_pos() -> Vector2:
 	return hand.global_position
 
-func torso_pos() -> Vector2:
-	return torso.global_position
+func torso_lo_pos() -> Vector2:
+	return torso_lo.global_position
+
+func torso_hi_pos() -> Vector2:
+	return torso_hi.global_position
 
 # Live-tuning: reposition the shoulder pivot + arm-image pivot (so the arm stays pinned at the shoulder
 # when raised). Called by main.gd's tuner.

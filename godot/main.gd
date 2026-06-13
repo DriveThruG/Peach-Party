@@ -33,8 +33,10 @@ var last_ball_y := 0.0   # previous frame's ball Y, for top-down rim scoring
 var hud: CanvasLayer
 var score_label: Label
 
-# Collision (radius around each character's torso centre).
-const PLAYER_RADIUS := 32.0
+# Collision: each character is a capsule (segment torso_lo..torso_hi + this radius).
+const PLAYER_RADIUS := 30.0
+const TILT_GAIN := 0.02       # how hard a collision topples the body (bigger = more)
+const BOUNCE := 0.3           # player-player restitution
 
 func _ready() -> void:
 	var bg := Sprite2D.new()
@@ -218,28 +220,29 @@ func _separate_players() -> void:
 		for j in range(i + 1, players.size()):
 			var a = players[i]
 			var b = players[j]
-			var d: Vector2 = b.torso_pos() - a.torso_pos()
+			# Closest points between the two body capsules' centre segments.
+			var cp: Array = _seg_seg(a.torso_lo_pos(), a.torso_hi_pos(), b.torso_lo_pos(), b.torso_hi_pos())
+			var d: Vector2 = cp[1] - cp[0]
 			var dist: float = d.length()
 			if dist < min_d and dist > 0.01:
-				var n: Vector2 = d / dist
+				var n: Vector2 = d / dist     # a -> b
 				var overlap: float = min_d - dist
-				# Gentle position correction (no instant teleport-slide).
+				# Gentle position correction (no teleport-slide).
 				a.position -= n * overlap * 0.3
 				b.position += n * overlap * 0.3
-				# Knockback + TOPPLE: strength from how hard they ran into each other; the spring in
-				# player.gd auto-rights them. A diagonal jump-in tips harder (more closing speed).
+				# Knockback + topple ONLY when approaching (closing > 0) -> no run-away explosion.
 				var closing: float = (a.vel - b.vel).dot(n)
-				var strength: float = clampf(absf(closing) * 0.6 + overlap * 4.0, 0.0, 300.0)
-				var tg := 0.02
-				a.bump(-n * strength, -n.x * tg * strength)
-				b.bump(n * strength, n.x * tg * strength)
+				if closing > 0.0:
+					var imp: Vector2 = n * (closing * (1.0 + BOUNCE) * 0.5)
+					a.bump(-imp, -n.x * closing * TILT_GAIN)
+					b.bump(imp, n.x * closing * TILT_GAIN)
 
 func _ball_vs_players() -> void:
-	# The free ball bounces off player torsos (it can't pass through them). Grabbing still wins because
-	# the hand check runs first and reaches further than the torso.
+	# The free ball bounces off the player capsule. Grabbing still wins (the hand check runs first and
+	# reaches further than the body).
 	var min_d: float = PLAYER_RADIUS + ball.radius
 	for p in players:
-		var c: Vector2 = p.torso_pos()
+		var c: Vector2 = _closest_on_seg(ball.position, p.torso_lo_pos(), p.torso_hi_pos())
 		var d: Vector2 = ball.position - c
 		var dist: float = d.length()
 		if dist < min_d and dist > 0.01:
@@ -248,6 +251,43 @@ func _ball_vs_players() -> void:
 			var vn: float = ball.vel.dot(n)
 			if vn < 0.0:
 				ball.vel -= n * (vn * 1.4)
+
+# Closest point on segment ab to point p.
+func _closest_on_seg(p: Vector2, a: Vector2, b: Vector2) -> Vector2:
+	var ab: Vector2 = b - a
+	var t: float = clampf((p - a).dot(ab) / maxf(ab.dot(ab), 0.0001), 0.0, 1.0)
+	return a + ab * t
+
+# Closest points between segments p1q1 and p2q2 (returns [c1, c2]).
+func _seg_seg(p1: Vector2, q1: Vector2, p2: Vector2, q2: Vector2) -> Array:
+	var d1: Vector2 = q1 - p1
+	var d2: Vector2 = q2 - p2
+	var r: Vector2 = p1 - p2
+	var a: float = d1.dot(d1)
+	var e: float = d2.dot(d2)
+	var f: float = d2.dot(r)
+	var s: float = 0.0
+	var t: float = 0.0
+	if a <= 0.0001 and e <= 0.0001:
+		return [p1, p2]
+	if a <= 0.0001:
+		t = clampf(f / e, 0.0, 1.0)
+	elif e <= 0.0001:
+		s = clampf(-d1.dot(r) / a, 0.0, 1.0)
+	else:
+		var c: float = d1.dot(r)
+		var b: float = d1.dot(d2)
+		var denom: float = a * e - b * b
+		if denom > 0.0001:
+			s = clampf((b * f - c * e) / denom, 0.0, 1.0)
+		t = (b * s + f) / e
+		if t < 0.0:
+			t = 0.0
+			s = clampf(-c / a, 0.0, 1.0)
+		elif t > 1.0:
+			t = 1.0
+			s = clampf((b - c) / a, 0.0, 1.0)
+	return [p1 + d1 * s, p2 + d2 * t]
 
 func _reset_ball() -> void:
 	ball_holder = null
