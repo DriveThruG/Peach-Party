@@ -30,3 +30,25 @@ float UPPBasketWidgetLib::SegmentLenPx(FVector2D A, FVector2D B, FVector2D Canva
 	const double Dy = (B.Y - A.Y) * CanvasSize.Y;
 	return static_cast<float>(FMath::Sqrt(Dx * Dx + Dy * Dy));
 }
+
+void UPPBasketWidgetLib::SetArm(UWidget* Arm, FVector2D Shoulder, FVector2D Hand, FVector2D CanvasSize, float Thickness)
+{
+	if (!Arm)
+	{
+		return;
+	}
+	UCanvasPanelSlot* Slot = Cast<UCanvasPanelSlot>(Arm->Slot);
+	if (!Slot)
+	{
+		return;
+	}
+
+	const FVector2D ShoulderPx(Shoulder.X * CanvasSize.X, (1.0 - Shoulder.Y) * CanvasSize.Y);
+
+	Slot->SetAlignment(FVector2D(0.f, 0.5f));                                  // pivot the slot at the shoulder end
+	Slot->SetPosition(ShoulderPx);
+	Slot->SetSize(FVector2D(SegmentLenPx(Shoulder, Hand, CanvasSize), Thickness));
+
+	Arm->SetRenderTransformPivot(FVector2D(0.f, 0.5f));                        // rotate around the shoulder end
+	Arm->SetRenderTransformAngle(ArmAngleDeg(Shoulder, Hand, CanvasSize));
+}

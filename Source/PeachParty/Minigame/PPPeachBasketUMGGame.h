@@ -74,17 +74,17 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ThrowFlightTime = 0.9f;
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float GrabRange = 0.075f;
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float GroundY = 0.6f;       // char rest height — set to your background's FLOOR line
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float BallFloorY = 0.5f;    // ball rest height — tune to your background's floor line
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float BallFloorY = 0.4f;    // ball rest height — tune to your background's floor line
 	// After a grab/steal, no one can steal the ball for this long (stops 2 players ping-ponging it).
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float StealCooldown = 0.2f;
 	// Visual offset of the shoulder (arm's fixed end) up the body from Pos.
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ShoulderHeight = 0.03f;
 	// Layout: match these to where your hoop images sit (normalised). A scores in the RIGHT hoop.
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopLeftPos = FVector2D(0.10, 0.855);
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopRightPos = FVector2D(0.72, 0.855);
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopLeftPos = FVector2D(0.235, 0.66);
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopRightPos = FVector2D(0.795, 0.66);
 	// Hoop "rim" box: solid LEFT/RIGHT edges (ball bounces), open TOP (ball drops through to score).
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float HoopHalfWidth = 0.06f;
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float HoopHalfHeight = 0.04f;
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float HoopHalfWidth = 0.035f;
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float HoopHalfHeight = 0.03f;
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float BallRadius = 0.025f;
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float RimRestitution = 0.5f; // 0 = dead, 1 = bouncy
 

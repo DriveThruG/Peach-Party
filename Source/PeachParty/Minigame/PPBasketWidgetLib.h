@@ -34,4 +34,16 @@ public:
 	/** Pixel distance between two normalised points — feed into the arm's width/scale so it reaches the Hand. */
 	UFUNCTION(BlueprintPure, Category = "PeachParty|Basket")
 	static float SegmentLenPx(FVector2D A, FVector2D B, FVector2D CanvasSize);
+
+	/**
+	 * ONE-CALL arm placement. Stretches + rotates an arm image so it runs from Shoulder to Hand and
+	 * follows the Hand's distance (so it grows/shrinks like the debug line, not a fixed length).
+	 * Requirements on the arm Image:
+	 *   - it is a DIRECT child of a Canvas Panel,
+	 *   - its canvas-slot "Size To Content" is OFF (so the explicit size sticks),
+	 *   - its texture is drawn pointing RIGHT with the shoulder end at the LEFT edge.
+	 * Thickness = arm width in pixels.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "PeachParty|Basket")
+	static void SetArm(UWidget* Arm, FVector2D Shoulder, FVector2D Hand, FVector2D CanvasSize, float Thickness = 18.f);
 };
