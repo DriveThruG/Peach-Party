@@ -74,16 +74,16 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ThrowFlightTime = 0.9f;
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float GrabRange = 0.075f;
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ScoreRange = 0.06f;
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float GroundY = 0.18f;      // char rest height — set to your background's FLOOR line
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float BallFloorY = 0.10f;   // ball rest height
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float GroundY = 0.6f;       // char rest height — set to your background's FLOOR line
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float BallFloorY = 0.6f;    // ball rest height (= GroundY so the ball rests at the players' feet)
 	// Layout: match these to where your hoop images sit (normalised). A scores in the RIGHT hoop.
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopLeftPos = FVector2D(0.08, 0.62);
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopRightPos = FVector2D(0.92, 0.62);
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopLeftPos = FVector2D(0.10, 0.855);
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopRightPos = FVector2D(0.72, 0.855);
 
 	// Start coordinates (normalised). 4 chars: index 0,1 = team A (left), 2,3 = team B (right).
 	// Defaults set in the constructor; edit per element in a BP subclass. Ball start too.
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") TArray<FVector2D> CharStartPositions;
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D BallStartPos = FVector2D(0.5, 0.5);
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D BallStartPos = FVector2D(0.48, 0.8);
 
 private:
 	// Server-only simulation state (parallel to RepState.Chars by index).
