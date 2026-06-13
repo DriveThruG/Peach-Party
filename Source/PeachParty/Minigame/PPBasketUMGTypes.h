@@ -42,6 +42,7 @@ struct FPPBasketState
 	// dropping through the open TOP. Hide these boxes once the layout is dialled in.
 	UPROPERTY(BlueprintReadOnly, Category = "PeachParty|Basket") float HoopHalfW = 0.06f;
 	UPROPERTY(BlueprintReadOnly, Category = "PeachParty|Basket") float HoopHalfH = 0.04f;
+	UPROPERTY(BlueprintReadOnly, Category = "PeachParty|Basket") float BallRadius = 0.025f; // size the ball image to this
 	UPROPERTY(BlueprintReadOnly, Category = "PeachParty|Basket") int32 ScoreA = 0; // team A (left)
 	UPROPERTY(BlueprintReadOnly, Category = "PeachParty|Basket") int32 ScoreB = 0; // team B (right)
 };

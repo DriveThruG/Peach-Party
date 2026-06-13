@@ -360,6 +360,14 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-13** — **C++ debug overlay + fixes**: new `Minigame/PPBasketDebugWidget` (C++ UUserWidget,
+  no asset) drawn on top of `WBP_BasketGame` by the PlayerController — paints the hoop rim boxes (red
+  outline + yellow solid side-walls), the ball collision marker (orange), and each char's Shoulder→Hand
+  arm line (green). Toggle with console `pp.basket.debug 0/1`. So the rim is visible without touching the
+  widget. Also: `char3` start → (0.70,0.60) (no longer below floor), `BallFloorY` default → 0.5 (ball was
+  resting too high at 0.6), `BallRadius` added to `FPPBasketState` (size the ball image to it). NEW FILES
+  → user must **Generate VS project files** before building. The arm IMAGE itself still goes in the
+  widget (user has the arm texture); the overlay's green line shows where to place it.
 - **2026-06-13** — **Basket mechanics pass** (`PPPeachBasketUMGGame` + `PPBasketUMGTypes` +
   `PPBasketWidgetLib`): (1) **steal cooldown** `StealCooldown=0.2s` (`StealTimer`) so two players stop
   ping-ponging the ball. (2) **Hoop rim box**: replaced the proximity `TryScore` with `HoopInteract` —

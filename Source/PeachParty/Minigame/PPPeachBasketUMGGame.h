@@ -74,7 +74,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ThrowFlightTime = 0.9f;
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float GrabRange = 0.075f;
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float GroundY = 0.6f;       // char rest height — set to your background's FLOOR line
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float BallFloorY = 0.6f;    // ball rest height (= GroundY so the ball rests at the players' feet)
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float BallFloorY = 0.5f;    // ball rest height — tune to your background's floor line
 	// After a grab/steal, no one can steal the ball for this long (stops 2 players ping-ponging it).
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float StealCooldown = 0.2f;
 	// Visual offset of the shoulder (arm's fixed end) up the body from Pos.

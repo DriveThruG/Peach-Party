@@ -2,6 +2,7 @@
 #include "Core/PPPlayerState.h"
 #include "Minigame/PPMinigameBase.h"
 #include "Minigame/PPPeachBasketUMGGame.h"
+#include "Minigame/PPBasketDebugWidget.h"
 #include "Blueprint/UserWidget.h"
 #include "Camera/PlayerCameraManager.h"
 #include "TimerManager.h"
@@ -56,11 +57,21 @@ void APPPlayerController::UpdateMinigameHud()
 		{
 			MinigameHud->AddToViewport(50);
 		}
+
+		// C++ debug overlay on top (rim boxes / ball / arm lines; toggle via `pp.basket.debug`).
+		if (!DebugHud)
+		{
+			DebugHud = CreateWidget<UUserWidget>(this, UPPBasketDebugWidget::StaticClass());
+		}
+		if (DebugHud && !DebugHud->IsInViewport())
+		{
+			DebugHud->AddToViewport(60);
+		}
 	}
-	else if (MinigameHud)
+	else
 	{
-		MinigameHud->RemoveFromParent();
-		MinigameHud = nullptr;
+		if (MinigameHud) { MinigameHud->RemoveFromParent(); MinigameHud = nullptr; }
+		if (DebugHud)    { DebugHud->RemoveFromParent();    DebugHud = nullptr; }
 	}
 }
 

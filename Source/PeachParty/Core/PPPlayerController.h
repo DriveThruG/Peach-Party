@@ -48,5 +48,9 @@ protected:
 	UPROPERTY(Transient)
 	class UUserWidget* MinigameHud = nullptr;
 
+	/** C++ debug overlay drawn on top of the basket HUD (rim boxes / ball / arm lines). */
+	UPROPERTY(Transient)
+	class UUserWidget* DebugHud = nullptr;
+
 	void UpdateMinigameHud(); // create/remove the widget to match GetViewedMinigame()
 };

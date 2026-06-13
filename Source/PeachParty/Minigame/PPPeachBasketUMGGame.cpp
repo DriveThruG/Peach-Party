@@ -15,7 +15,7 @@ APPPeachBasketUMGGame::APPPeachBasketUMGGame()
 	// Start spots (normalised). Index 0,1 = team A (left), 2,3 = team B (right). Tuned live via console.
 	CharStartPositions = {
 		FVector2D(0.25, 0.60), FVector2D(0.38, 0.60), // team A
-		FVector2D(0.57, 0.60), FVector2D(0.70, 0.18)  // team B
+		FVector2D(0.57, 0.60), FVector2D(0.70, 0.60)  // team B
 	};
 }
 
@@ -71,7 +71,7 @@ void APPPeachBasketUMGGame::DebugSetTunable(const FString& InKey, const TArray<f
 	else if (Key == TEXT("shoulder"))   { ShoulderHeight = V0; }
 	else if (Key == TEXT("hoopw"))      { HoopHalfWidth = V0;  RepState.HoopHalfW = V0; }
 	else if (Key == TEXT("hooph"))      { HoopHalfHeight = V0; RepState.HoopHalfH = V0; }
-	else if (Key == TEXT("ballradius")) { BallRadius = V0; }
+	else if (Key == TEXT("ballradius")) { BallRadius = V0; RepState.BallRadius = V0; }
 	else if (Key == TEXT("rimrest"))    { RimRestitution = V0; }
 	else if (Key == TEXT("target"))     { TargetScore = FMath::RoundToInt(V0); }
 	else if (Key == TEXT("groundy"))    { GroundY = V0; }          // read every tick -> instant
@@ -201,6 +201,7 @@ void APPPeachBasketUMGGame::SetupField()
 	RepState.HoopRight = HoopRightPos;
 	RepState.HoopHalfW = HoopHalfWidth;
 	RepState.HoopHalfH = HoopHalfHeight;
+	RepState.BallRadius = BallRadius;
 	RepState.Ball = BallStartPos;
 	RepState.ScoreA = 0;
 	RepState.ScoreB = 0;
