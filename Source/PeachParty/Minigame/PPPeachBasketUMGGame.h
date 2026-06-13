@@ -77,8 +77,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float BallFloorY = 0.4f;    // ball rest height — tune to your background's floor line
 	// After a grab/steal, no one can steal the ball for this long (stops 2 players ping-ponging it).
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float StealCooldown = 0.2f;
-	// Visual offset of the shoulder (arm's fixed end) up the body from Pos.
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ShoulderHeight = 0.03f;
+	// Arm geometry relative to Pos (tune so the green debug line sits on the body's arm):
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ShoulderHeight = 0.03f; // shoulder (fixed end) offset up from Pos
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float HandBase = 0.04f;       // hand distance from Pos with arms DOWN
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float HandRange = 0.11f;      // extra hand distance at full arms-UP
 	// Layout: match these to where your hoop images sit (normalised). A scores in the RIGHT hoop.
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopLeftPos = FVector2D(0.235, 0.66);
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopRightPos = FVector2D(0.795, 0.66);

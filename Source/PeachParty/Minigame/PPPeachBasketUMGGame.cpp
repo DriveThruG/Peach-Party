@@ -69,6 +69,8 @@ void APPPeachBasketUMGGame::DebugSetTunable(const FString& InKey, const TArray<f
 	else if (Key == TEXT("grab"))       { GrabRange = V0; }
 	else if (Key == TEXT("stealcd"))    { StealCooldown = V0; }
 	else if (Key == TEXT("shoulder"))   { ShoulderHeight = V0; }
+	else if (Key == TEXT("handbase"))   { HandBase = V0; }
+	else if (Key == TEXT("handrange"))  { HandRange = V0; }
 	else if (Key == TEXT("hoopw"))      { HoopHalfWidth = V0;  RepState.HoopHalfW = V0; }
 	else if (Key == TEXT("hooph"))      { HoopHalfHeight = V0; RepState.HoopHalfH = V0; }
 	else if (Key == TEXT("ballradius")) { BallRadius = V0; RepState.BallRadius = V0; }
@@ -95,12 +97,12 @@ FString APPPeachBasketUMGGame::DebugDumpTunables() const
 	}
 	return FString::Printf(
 		TEXT("jump=%.3f slide=%.2f airdrag=%.2f lean=%.3f leanfreq=%.2f gravity=%.3f armrate=%.2f ")
-		TEXT("throwtime=%.2f grab=%.3f stealcd=%.2f shoulder=%.3f target=%d groundy=%.3f ballfloor=%.3f ")
-		TEXT("hoopw=%.3f hooph=%.3f ballradius=%.3f rimrest=%.2f ")
+		TEXT("throwtime=%.2f grab=%.3f stealcd=%.2f shoulder=%.3f handbase=%.3f handrange=%.3f ")
+		TEXT("target=%d groundy=%.3f ballfloor=%.3f hoopw=%.3f hooph=%.3f ballradius=%.3f rimrest=%.2f ")
 		TEXT("hoopleft=(%.3f,%.3f) hoopright=(%.3f,%.3f) ball=(%.3f,%.3f)%s"),
 		JumpImpulse, SlideFriction, AirDrag, MaxLean, LeanFreq, Gravity, ArmRaiseRate,
-		ThrowFlightTime, GrabRange, StealCooldown, ShoulderHeight, TargetScore, GroundY, BallFloorY,
-		HoopHalfWidth, HoopHalfHeight, BallRadius, RimRestitution,
+		ThrowFlightTime, GrabRange, StealCooldown, ShoulderHeight, HandBase, HandRange,
+		TargetScore, GroundY, BallFloorY, HoopHalfWidth, HoopHalfHeight, BallRadius, RimRestitution,
 		HoopLeftPos.X, HoopLeftPos.Y, HoopRightPos.X, HoopRightPos.Y, BallStartPos.X, BallStartPos.Y, *Chars);
 }
 
@@ -261,7 +263,7 @@ void APPPeachBasketUMGGame::ServerTick(float Dt)
 		// Arm endpoints for the widget: Shoulder (fixed on the body) -> Hand (grab/hold/throw point).
 		const FVector2D Up = UpVec(C.Lean);
 		C.Shoulder = C.Pos + Up * ShoulderHeight;
-		C.Hand     = C.Pos + Up * (0.04f + C.ArmAngle * 0.11f);
+		C.Hand     = C.Pos + Up * (HandBase + C.ArmAngle * HandRange);
 	}
 
 	// ---- ball ----
@@ -299,7 +301,7 @@ FVector2D APPPeachBasketUMGGame::HandOf(int32 Index) const
 		return RepState.Ball;
 	}
 	const FPPBasketChar& C = RepState.Chars[Index];
-	const float HandLen = 0.04f + C.ArmAngle * 0.11f; // arms up -> hand higher
+	const float HandLen = HandBase + C.ArmAngle * HandRange; // arms up -> hand higher
 	return C.Pos + UpVec(C.Lean) * HandLen;
 }
 
