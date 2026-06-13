@@ -29,6 +29,13 @@ var steal_cooldown := 0.0
 var ball_holder = null   # which player currently holds the ball (null = free)
 var last_ball_y := 0.0   # previous frame's ball Y, for top-down rim scoring
 
+# HUD + arm live-tuner.
+var hud: CanvasLayer
+var score_label: Label
+var tune_label: Label
+var tune_shoulder := Vector2(-26, -262)   # matches player.gd SHOULDER default
+var tune_arm_pivot := 72.0                # matches player.gd ARM_HALF_H default
+
 func _ready() -> void:
 	var bg := Sprite2D.new()
 	bg.texture = load("res://art/Background.png")
@@ -61,9 +68,39 @@ func _ready() -> void:
 	_spawn(Vector2(780, ground_y), "res://art/Player02_Body.png", "res://art/Player02_Arm.png", KEY_ENTER, 0.6, -1)
 	_spawn(Vector2(950, ground_y), "res://art/Player04_Body.png", "res://art/Player04_Arm.png", KEY_ENTER, 1.7, -1)
 
+	_build_hud()
+
+func _build_hud() -> void:
+	hud = CanvasLayer.new()
+	add_child(hud)
+
+	score_label = _make_label(48, Vector2(VIEW.x * 0.5 - 200, 18), Vector2(400, 60))
+	hud.add_child(score_label)
+	_update_score_label()
+
+	# Arm tuner readout (bottom-left). Keys: J/L shoulder x, I/K shoulder y, U/O arm pivot.
+	tune_label = _make_label(20, Vector2(16, VIEW.y - 70), Vector2(700, 60))
+	tune_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	hud.add_child(tune_label)
+	_update_tune_label()
+
+func _make_label(font_size: int, pos: Vector2, sz: Vector2) -> Label:
+	var l := Label.new()
+	l.add_theme_font_size_override("font_size", font_size)
+	l.add_theme_color_override("font_color", Color(1, 1, 1))
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	l.add_theme_constant_override("outline_size", 8)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.position = pos
+	l.size = sz
+	return l
+
 func _process(delta: float) -> void:
 	throw_cooldown = maxf(0.0, throw_cooldown - delta)
 	steal_cooldown = maxf(0.0, steal_cooldown - delta)
+
+	_tune_arms(delta)
 
 	for p in players:
 		p.tick(delta)
@@ -143,8 +180,74 @@ func _score(team: int) -> void:
 		score_a += 1
 	else:
 		score_b += 1
-	print("SCORE  A %d : %d B" % [score_a, score_b])
+	_update_score_label()
+	_show_goal()
 	_reset_ball()
+
+# ---- HUD ----
+func _update_score_label() -> void:
+	if score_label != null:
+		score_label.text = "A  %d : %d  B" % [score_a, score_b]
+
+func _show_goal() -> void:
+	var label := Label.new()
+	label.text = "GOAL!"
+	label.add_theme_font_size_override("font_size", 110)
+	label.add_theme_color_override("font_color", Color(1, 0.82, 0.2))
+	label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	label.add_theme_constant_override("outline_size", 16)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.size = Vector2(640, 180)
+	label.position = Vector2(VIEW.x * 0.5 - 320, 175)
+	label.pivot_offset = Vector2(320, 90)
+	hud.add_child(label)
+	label.modulate.a = 0.0
+	label.scale = Vector2(0.55, 0.55)
+
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(label, "modulate:a", 1.0, 0.15)
+	tw.tween_property(label, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.set_parallel(false)
+	tw.tween_interval(0.6)
+	tw.set_parallel(true)
+	tw.tween_property(label, "modulate:a", 0.0, 0.4)
+	tw.tween_property(label, "position:y", 120.0, 0.4)
+	tw.set_parallel(false)
+	tw.tween_callback(label.queue_free)
+
+# ---- arm live-tuner (hold the keys; the readout shows the current values) ----
+func _tune_arms(delta: float) -> void:
+	var step := 70.0 * delta
+	var changed := false
+	if Input.is_physical_key_pressed(KEY_J):
+		tune_shoulder.x -= step
+		changed = true
+	if Input.is_physical_key_pressed(KEY_L):
+		tune_shoulder.x += step
+		changed = true
+	if Input.is_physical_key_pressed(KEY_I):
+		tune_shoulder.y -= step
+		changed = true
+	if Input.is_physical_key_pressed(KEY_K):
+		tune_shoulder.y += step
+		changed = true
+	if Input.is_physical_key_pressed(KEY_U):
+		tune_arm_pivot -= step
+		changed = true
+	if Input.is_physical_key_pressed(KEY_O):
+		tune_arm_pivot += step
+		changed = true
+	if changed:
+		for p in players:
+			p.update_rig(tune_shoulder, tune_arm_pivot)
+		_update_tune_label()
+
+func _update_tune_label() -> void:
+	if tune_label != null:
+		tune_label.text = "ARM TUNE  J/L shoulderX  I/K shoulderY  U/O arm-pivot   ->   SHOULDER=(%d, %d)  ARM_HALF_H=%d" % [
+			roundi(tune_shoulder.x), roundi(tune_shoulder.y), roundi(tune_arm_pivot)]
 
 func _reset_ball() -> void:
 	ball_holder = null

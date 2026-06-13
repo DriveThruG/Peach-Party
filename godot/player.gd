@@ -38,6 +38,7 @@ var sim_time := 0.0
 var was_charging := false
 
 var body: Node2D
+var shoulder_node: Node2D
 var arm: Sprite2D
 var hand: Marker2D
 
@@ -58,16 +59,16 @@ func setup(body_path: String, arm_path: String, key: int, phase: float, in_groun
 	body_spr.offset = Vector2(0, -BODY_HALF_H)
 	body.add_child(body_spr)
 
-	var shoulder := Node2D.new()
-	shoulder.position = SHOULDER
-	body.add_child(shoulder)
+	shoulder_node = Node2D.new()
+	shoulder_node.position = SHOULDER
+	body.add_child(shoulder_node)
 
 	arm = Sprite2D.new()
 	arm.texture = load(arm_path)
 	arm.centered = true
 	arm.offset = Vector2(0, ARM_HALF_H)
 	arm.z_index = 10        # arm in FRONT of the body AND in front of a held ball (ball sits at z=5)
-	shoulder.add_child(arm)
+	shoulder_node.add_child(arm)
 
 	hand = Marker2D.new()
 	hand.position = Vector2(0, ARM_HALF_H * 2.0)
@@ -75,6 +76,16 @@ func setup(body_path: String, arm_path: String, key: int, phase: float, in_groun
 
 func hand_pos() -> Vector2:
 	return hand.global_position
+
+# Live-tuning: reposition the shoulder pivot + arm-image pivot (so the arm stays pinned at the shoulder
+# when raised). Called by main.gd's tuner.
+func update_rig(sh: Vector2, arm_pivot_y: float) -> void:
+	if shoulder_node != null:
+		shoulder_node.position = sh
+	if arm != null:
+		arm.offset = Vector2(0, arm_pivot_y)
+	if hand != null:
+		hand.position = Vector2(0, arm_pivot_y + ARM_HALF_H)
 
 func tick(delta: float) -> void:
 	if body == null:
