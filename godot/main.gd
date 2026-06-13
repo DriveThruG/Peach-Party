@@ -115,13 +115,13 @@ func _rim_one(c: Vector2, team: int) -> void:
 		_score(team)
 
 func _bounce_post(p: Vector2) -> void:
-	var d := ball.position - p
-	var dist := d.length()
-	var min_dist := ball.radius + POST_R
+	var d: Vector2 = ball.position - p
+	var dist: float = d.length()
+	var min_dist: float = ball.radius + POST_R
 	if dist < min_dist and dist > 0.01:
-		var n := d / dist
+		var n: Vector2 = d / dist
 		ball.position = p + n * min_dist
-		var vn := ball.vel.dot(n)
+		var vn: float = ball.vel.dot(n)
 		if vn < 0.0:
 			ball.vel -= n * (vn * (1.0 + RIM_RESTITUTION))
 
