@@ -18,7 +18,7 @@ const PLAYER_SCALE := 0.44
 
 # Body-local anchors (feet at body origin; body extends up to y=-380):
 const BODY_HALF_H := 190.0
-const SHOULDER := Vector2(-16, -262)   # moved BACK from the chest so the arm sits on the shoulder
+const SHOULDER := Vector2(-26, -262)   # sits on the shoulder (further back than the chest)
 const ARM_HALF_H := 72.0
 
 # ---- config ----
@@ -66,7 +66,7 @@ func setup(body_path: String, arm_path: String, key: int, phase: float, in_groun
 	arm.texture = load(arm_path)
 	arm.centered = true
 	arm.offset = Vector2(0, ARM_HALF_H)
-	arm.z_index = 1
+	arm.z_index = 10        # arm in FRONT of the body AND in front of a held ball (ball sits at z=5)
 	shoulder.add_child(arm)
 
 	hand = Marker2D.new()

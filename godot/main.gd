@@ -10,8 +10,12 @@ const BallScript = preload("res://ball.gd")
 const VIEW := Vector2(1280, 720)
 const HOOP_SCALE := 0.7
 const GRAB_RANGE := 78.0
-const SCORE_RANGE := 48.0
 const THROW_FLIGHT := 0.8
+# Rim: two solid posts at the ring edges; the ball bounces off them and can only score by dropping
+# through the GAP between them from above.
+const RIM_HALF_W := 42.0
+const POST_R := 10.0
+const RIM_RESTITUTION := 0.45
 
 var players: Array = []
 var ball
@@ -23,6 +27,7 @@ var score_b := 0
 var throw_cooldown := 0.0
 var steal_cooldown := 0.0
 var ball_holder = null   # which player currently holds the ball (null = free)
+var last_ball_y := 0.0   # previous frame's ball Y, for top-down rim scoring
 
 func _ready() -> void:
 	var bg := Sprite2D.new()
@@ -74,24 +79,51 @@ func _process(delta: float) -> void:
 					best_d = d
 					best = p
 			if best != null:
-				ball_holder = best
-				ball.vel = Vector2.ZERO
-				steal_cooldown = 0.25
+				_set_holder(best)
 		if ball_holder == null:
 			ball.physics_step(delta)
-			_check_score()
+			_rim_interact()
 	else:
 		ball.position = ball_holder.hand_pos()
 		# Steal by an opposing hand (cooldown stops constant ping-pong).
 		if steal_cooldown <= 0.0:
 			for p in players:
 				if p.team != ball_holder.team and p.hand_pos().distance_squared_to(ball.position) < GRAB_RANGE * GRAB_RANGE:
-					ball_holder = p
-					steal_cooldown = 0.25
+					_set_holder(p)
 					break
 		# Throw when the holder releases the key.
 		if ball_holder.just_released:
 			_throw(ball_holder)
+
+	last_ball_y = ball.position.y
+
+func _set_holder(p) -> void:
+	ball_holder = p
+	ball.vel = Vector2.ZERO
+	ball.z_index = 5          # between body (0) and arm (10): only the arm covers the held ball
+	steal_cooldown = 0.25
+
+func _rim_interact() -> void:
+	_rim_one(rim_right, 1)
+	_rim_one(rim_left, 2)
+
+func _rim_one(c: Vector2, team: int) -> void:
+	_bounce_post(c + Vector2(-RIM_HALF_W, 0.0))
+	_bounce_post(c + Vector2(RIM_HALF_W, 0.0))
+	# Score: dropping DOWN through the gap (crossed the rim line this frame, inside the posts).
+	if ball.vel.y > 0.0 and last_ball_y <= c.y and ball.position.y > c.y and absf(ball.position.x - c.x) < RIM_HALF_W:
+		_score(team)
+
+func _bounce_post(p: Vector2) -> void:
+	var d := ball.position - p
+	var dist := d.length()
+	var min_dist := ball.radius + POST_R
+	if dist < min_dist and dist > 0.01:
+		var n := d / dist
+		ball.position = p + n * min_dist
+		var vn := ball.vel.dot(n)
+		if vn < 0.0:
+			ball.vel -= n * (vn * (1.0 + RIM_RESTITUTION))
 
 func _throw(holder) -> void:
 	var target: Vector2 = rim_right if holder.team == 1 else rim_left
@@ -103,15 +135,8 @@ func _throw(holder) -> void:
 	var quality := clampf(holder.arm_amt, 0.18, 1.0)   # low arms -> weak throw -> falls short
 	ball.vel = Vector2(vx, vy) * quality + Vector2(randf_range(-18.0, 18.0), randf_range(-18.0, 18.0))
 	ball_holder = null
+	ball.z_index = -1         # free ball renders behind the players again
 	throw_cooldown = 0.35
-
-func _check_score() -> void:
-	if ball.vel.y <= 0.0:
-		return  # only when falling
-	if ball.position.distance_to(rim_right) < SCORE_RANGE:
-		_score(1)
-	elif ball.position.distance_to(rim_left) < SCORE_RANGE:
-		_score(2)
 
 func _score(team: int) -> void:
 	if team == 1:
@@ -125,6 +150,8 @@ func _reset_ball() -> void:
 	ball_holder = null
 	ball.vel = Vector2.ZERO
 	ball.position = Vector2(640, ground_y - 80)
+	ball.z_index = -1
+	last_ball_y = ball.position.y
 	throw_cooldown = 0.3
 
 func _spawn(pos: Vector2, body_path: String, arm_path: String, key: int, phase: float, facing: int) -> void:
