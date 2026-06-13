@@ -41,6 +41,13 @@ public:
 	UFUNCTION(CallInEditor, BlueprintCallable, Category = "PeachParty|Basket|Tuning")
 	void DebugResetField();
 
+	/** Console-command backend: set a named tunable live (authority only). See `pp.basket` in
+	 *  PPPeachBasketUMGGame.cpp for the key list. */
+	void DebugSetTunable(const FString& Key, const TArray<float>& Values);
+
+	/** Console-command backend: one-line dump of every current tunable (copy back into BP defaults). */
+	FString DebugDumpTunables() const;
+
 	/** FREE-PLAY (solo preview): no time limit, scoring never ends the match (just resets the field).
 	 *  Set by the GameMode's bDebugSoloBasket path so you can tune layout/feel with ONE PIE player. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PeachParty|Basket|Tuning")

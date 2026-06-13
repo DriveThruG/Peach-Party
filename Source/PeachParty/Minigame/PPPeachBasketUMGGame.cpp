@@ -1,6 +1,10 @@
 #include "Minigame/PPPeachBasketUMGGame.h"
 #include "Core/PPPlayerState.h"
 #include "Net/UnrealNetwork.h"
+#include "HAL/IConsoleManager.h"
+#include "EngineUtils.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
 
 APPPeachBasketUMGGame::APPPeachBasketUMGGame()
 {
@@ -43,6 +47,122 @@ void APPPeachBasketUMGGame::DebugResetField()
 	{
 		SetupField();
 	}
+}
+
+void APPPeachBasketUMGGame::DebugSetTunable(const FString& InKey, const TArray<float>& V)
+{
+	if (!HasAuthority())
+	{
+		return; // only the simulating (server) instance does anything
+	}
+	const FString Key = InKey.ToLower();
+	const float V0 = V.IsValidIndex(0) ? V[0] : 0.f;
+
+	if      (Key == TEXT("jump"))       { JumpImpulse = V0; }
+	else if (Key == TEXT("slide"))      { SlideFriction = V0; }
+	else if (Key == TEXT("airdrag"))    { AirDrag = V0; }
+	else if (Key == TEXT("lean"))       { MaxLean = V0; }
+	else if (Key == TEXT("leanfreq"))   { LeanFreq = V0; }
+	else if (Key == TEXT("gravity"))    { Gravity = V0; }
+	else if (Key == TEXT("armrate"))    { ArmRaiseRate = V0; }
+	else if (Key == TEXT("throwtime"))  { ThrowFlightTime = V0; }
+	else if (Key == TEXT("grab"))       { GrabRange = V0; }
+	else if (Key == TEXT("score"))      { ScoreRange = V0; }
+	else if (Key == TEXT("target"))     { TargetScore = FMath::RoundToInt(V0); }
+	else if (Key == TEXT("groundy"))    { GroundY = V0; }          // read every tick -> instant
+	else if (Key == TEXT("ballfloor"))  { BallFloorY = V0; }
+	else if (Key == TEXT("hoopleft") && V.Num() >= 2)  { HoopLeftPos  = FVector2D(V[0], V[1]); RepState.HoopLeft  = HoopLeftPos; }
+	else if (Key == TEXT("hoopright") && V.Num() >= 2) { HoopRightPos = FVector2D(V[0], V[1]); RepState.HoopRight = HoopRightPos; }
+	else if (Key == TEXT("ball") && V.Num() >= 2)      { BallStartPos = FVector2D(V[0], V[1]); } // applies on next reset
+	else if (Key == TEXT("char") && V.Num() >= 3)
+	{
+		const int32 Idx = FMath::RoundToInt(V[0]);
+		if (CharStartPositions.IsValidIndex(Idx)) { CharStartPositions[Idx] = FVector2D(V[1], V[2]); } // applies on next reset
+	}
+}
+
+FString APPPeachBasketUMGGame::DebugDumpTunables() const
+{
+	return FString::Printf(
+		TEXT("jump=%.3f slide=%.2f airdrag=%.2f lean=%.3f leanfreq=%.2f gravity=%.3f armrate=%.2f ")
+		TEXT("throwtime=%.2f grab=%.3f score=%.3f target=%d groundy=%.3f ballfloor=%.3f ")
+		TEXT("hoopleft=(%.3f,%.3f) hoopright=(%.3f,%.3f) ball=(%.3f,%.3f)"),
+		JumpImpulse, SlideFriction, AirDrag, MaxLean, LeanFreq, Gravity, ArmRaiseRate,
+		ThrowFlightTime, GrabRange, ScoreRange, TargetScore, GroundY, BallFloorY,
+		HoopLeftPos.X, HoopLeftPos.Y, HoopRightPos.X, HoopRightPos.Y, BallStartPos.X, BallStartPos.Y);
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Console commands: live basket tuning with NO outliner / F8 / world juggling.
+//   pp.basket <key> <v> [v2]   e.g.  pp.basket jump 0.8     pp.basket hoopright 0.9 0.62
+//   pp.basket.reset            rebuild the field (applies char/ball start positions)
+//   pp.basket.dump             print every current value (copy back into BP_PeachBasketUMG defaults)
+// Run them in the HOST/Solo window — only the server instance simulates.
+// ---------------------------------------------------------------------------------------------------
+namespace
+{
+	APPPeachBasketUMGGame* FindLiveBasket(UWorld* World)
+	{
+		if (!World)
+		{
+			return nullptr;
+		}
+		for (TActorIterator<APPPeachBasketUMGGame> It(World); It; ++It)
+		{
+			if (It->HasAuthority()) { return *It; }
+		}
+		return nullptr;
+	}
+
+	void NotifyNoBasket()
+	{
+		const TCHAR* Msg = TEXT("pp.basket: no authoritative basket here — run this in the HOST / Solo window.");
+		UE_LOG(LogTemp, Warning, TEXT("%s"), Msg);
+		if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, Msg); }
+	}
+
+	void BasketSetCmd(const TArray<FString>& Args, UWorld* World)
+	{
+		APPPeachBasketUMGGame* B = FindLiveBasket(World);
+		if (!B) { NotifyNoBasket(); return; }
+		if (Args.Num() < 2)
+		{
+			const TCHAR* U = TEXT("usage: pp.basket <key> <value> [v2]  keys: jump slide airdrag lean leanfreq gravity armrate throwtime grab score target groundy ballfloor | hoopleft <x> <y> | hoopright <x> <y> | ball <x> <y> | char <i> <x> <y>");
+			UE_LOG(LogTemp, Display, TEXT("%s"), U);
+			if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 8.f, FColor::Yellow, U); }
+			return;
+		}
+		TArray<float> Vals;
+		for (int32 i = 1; i < Args.Num(); ++i) { Vals.Add(FCString::Atof(*Args[i])); }
+		B->DebugSetTunable(Args[0], Vals);
+	}
+
+	void BasketResetCmd(const TArray<FString>& /*Args*/, UWorld* World)
+	{
+		if (APPPeachBasketUMGGame* B = FindLiveBasket(World)) { B->DebugResetField(); }
+		else { NotifyNoBasket(); }
+	}
+
+	void BasketDumpCmd(const TArray<FString>& /*Args*/, UWorld* World)
+	{
+		APPPeachBasketUMGGame* B = FindLiveBasket(World);
+		if (!B) { NotifyNoBasket(); return; }
+		const FString S = B->DebugDumpTunables();
+		UE_LOG(LogTemp, Display, TEXT("%s"), *S);
+		if (GEngine) { GEngine->AddOnScreenDebugMessage(-1, 30.f, FColor::Green, S); }
+	}
+
+	FAutoConsoleCommandWithWorldAndArgs GBasketSet(
+		TEXT("pp.basket"), TEXT("Set a basket tunable live: pp.basket <key> <value> [v2]."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&BasketSetCmd));
+
+	FAutoConsoleCommandWithWorldAndArgs GBasketReset(
+		TEXT("pp.basket.reset"), TEXT("Rebuild the basket field (applies char/ball start positions)."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&BasketResetCmd));
+
+	FAutoConsoleCommandWithWorldAndArgs GBasketDump(
+		TEXT("pp.basket.dump"), TEXT("Print every current basket tunable."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&BasketDumpCmd));
 }
 
 void APPPeachBasketUMGGame::SetupField()

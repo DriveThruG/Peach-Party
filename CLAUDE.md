@@ -360,6 +360,13 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-13** — **Console tuning commands** (`Minigame/PPPeachBasketUMGGame.cpp`): `pp.basket <key>
+  <v> [v2]`, `pp.basket.reset`, `pp.basket.dump` (FAutoConsoleCommandWithWorldAndArgs). Live-tune the
+  basket from the `~` console with NO outliner / F8 / world juggling — the prior Details-panel path
+  failed because the World Outliner shows the editor world during PIE, not the runtime actor. Backends
+  `DebugSetTunable`/`DebugDumpTunables` on the basket (authority-only; `FindLiveBasket` picks the server
+  instance, warns if run on a client window). Also fixed: client black screen (PawnClientRestart was
+  nuking the basket HUD) and enabled `bDebugSoloBasket` for 1-player tuning.
 - **2026-06-13** — **SCOPE RESET to Peach-Basket-only, local 2-player** (user request; full backup kept).
   Deleted ~22 source files + 130+ content assets: 3D/FP character internals, Peach Artillery
   (`PPTank/Projectile/Artillery`), old 3D basket (`PPPeachBasketGame/Ball/Character/Basket/PPVisual`),
