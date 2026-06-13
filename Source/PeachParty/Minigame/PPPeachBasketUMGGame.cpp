@@ -306,7 +306,9 @@ FVector2D APPPeachBasketUMGGame::ShoulderOf(int32 Index) const
 		return RepState.Ball;
 	}
 	const FPPBasketChar& C = RepState.Chars[Index];
-	return C.Pos + UpVec(C.Lean) * ShoulderHeight;
+	// STABLE pivot: a plain vertical offset from Pos (NOT along the leaning up-vector), so the rotation
+	// point doesn't sway sideways while the body pendulums. +ShoulderHeight = up, -ShoulderHeight = down.
+	return C.Pos + FVector2D(0.f, ShoulderHeight);
 }
 
 FVector2D APPPeachBasketUMGGame::HandOf(int32 Index) const
