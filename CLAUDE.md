@@ -360,6 +360,15 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-13** — **Arm = rotating fixed-length limb; rim split from hoop image**: `HandOf` now swings a
+  fixed-length arm pinned at the shoulder (`ArmRestDeg`→`ArmRaisedDeg` by `ArmAngle`, team-B mirrored,
+  lean applied) — the hand traces an ARC, the arm doesn't lengthen (the previous "extend along up" was the
+  bug behind the always-up, growing debug line). Tunables `ArmLength/ArmRestDeg/ArmRaisedDeg` (console
+  `armlength/armrest/armraised`) replace `HandBase/HandRange`. `SetArm` widget helper unchanged (length is
+  now constant). Also: **rim** (scoring + debug box + throw target) decoupled from the **hoop-image**
+  anchor — new `RimLeftPos/RimRightPos` (`RepState.RimLeft/Right`, console `rimleft/rimright`);
+  `HoopLeftPos/HoopRightPos` reverted to the user's (0.10,0.855)/(0.72,0.855) and now only drive the hoop
+  image. Dump lists arm + rim values.
 - **2026-06-13** — **C++ debug overlay + fixes**: new `Minigame/PPBasketDebugWidget` (C++ UUserWidget,
   no asset) drawn on top of `WBP_BasketGame` by the PlayerController — paints the hoop rim boxes (red
   outline + yellow solid side-walls), the ball collision marker (orange), and each char's Shoulder→Hand
