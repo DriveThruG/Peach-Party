@@ -318,10 +318,12 @@ FVector2D APPPeachBasketUMGGame::HandOf(int32 Index) const
 	const FPPBasketChar& C = RepState.Chars[Index];
 
 	// Fixed-length arm pinned at the shoulder; charging ROTATES it (rest angle -> raised angle). Team A
-	// (left, faces right) swings on the right; team B is mirrored. Body lean rotates the whole arm too.
-	const double SwingDeg = FMath::Lerp((double)ArmRestDeg, (double)ArmRaisedDeg, (double)C.ArmAngle)
-	                      + FMath::RadiansToDegrees((double)C.Lean);
-	const double ThetaDeg = (C.Team == 1) ? SwingDeg : (180.0 - SwingDeg);
+	// (left, faces right) swings on the right; team B is mirrored. The body's lean rotates the up-vector
+	// CLOCKWISE (angle 90deg-Lean), so the arm must rotate by -Lean to stay rigid with the body — and that
+	// term goes AFTER the team mirror so BOTH sides track their body the same way.
+	const double Base = FMath::Lerp((double)ArmRestDeg, (double)ArmRaisedDeg, (double)C.ArmAngle);
+	const double Mirrored = (C.Team == 1) ? Base : (180.0 - Base);
+	const double ThetaDeg = Mirrored - FMath::RadiansToDegrees((double)C.Lean);
 	const double Theta = FMath::DegreesToRadians(ThetaDeg);
 	const FVector2D Dir(FMath::Cos(Theta), FMath::Sin(Theta));
 	return ShoulderOf(Index) + Dir * ArmLength;

@@ -81,8 +81,8 @@ protected:
 	// it does NOT lengthen. Tune so the green debug line lies on the body's arm.
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ShoulderHeight = 0.03f; // shoulder (pivot) offset up from Pos
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ArmLength = 0.09f;      // fixed shoulder->hand length
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ArmRestDeg = -75.f;     // arm angle (deg) with arms DOWN
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ArmRaisedDeg = 75.f;    // arm angle (deg) at full charge (arms UP)
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ArmRestDeg = -85.f;     // arm angle (deg) with arms DOWN
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ArmRaisedDeg = 85.f;    // arm angle (deg) at full charge (arms UP)
 	// HOOP IMAGE anchor (only what your widget uses to place the hoop picture). A scores in the RIGHT hoop.
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopLeftPos = FVector2D(0.10, 0.855);
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopRightPos = FVector2D(0.72, 0.855);
