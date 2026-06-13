@@ -42,15 +42,22 @@ void APPPlayerController::UpdateMinigameHud()
 	// Show the widget only while viewing a UMG-type minigame; remove it otherwise.
 	const bool bWantHud = Cast<APPPeachBasketUMGGame>(GetViewedMinigame()) != nullptr;
 
-	if (bWantHud && !MinigameHud)
+	if (bWantHud)
 	{
-		if (UClass* WClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/PeachParty/UI/WBP_BasketGame.WBP_BasketGame_C")))
+		if (!MinigameHud)
 		{
-			MinigameHud = CreateWidget<UUserWidget>(this, WClass);
-			if (MinigameHud) { MinigameHud->AddToViewport(50); }
+			if (UClass* WClass = LoadClass<UUserWidget>(nullptr, TEXT("/Game/PeachParty/UI/WBP_BasketGame.WBP_BasketGame_C")))
+			{
+				MinigameHud = CreateWidget<UUserWidget>(this, WClass);
+			}
+		}
+		// Self-heal: (re)add to the viewport if something removed it (e.g. a pawn restart).
+		if (MinigameHud && !MinigameHud->IsInViewport())
+		{
+			MinigameHud->AddToViewport(50);
 		}
 	}
-	else if (!bWantHud && MinigameHud)
+	else if (MinigameHud)
 	{
 		MinigameHud->RemoveFromParent();
 		MinigameHud = nullptr;

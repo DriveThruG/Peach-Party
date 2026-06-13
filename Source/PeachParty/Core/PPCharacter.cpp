@@ -4,7 +4,6 @@
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Engine/World.h"
-#include "Engine/GameViewportClient.h"
 
 APPCharacter::APPCharacter()
 {
@@ -29,11 +28,9 @@ void APPCharacter::PawnClientRestart()
 	{
 		if (PC->IsLocalController())
 		{
-			// Clear any leftover viewport widgets, then make sure game input is active.
-			if (UGameViewportClient* VP = GetWorld() ? GetWorld()->GetGameViewport() : nullptr)
-			{
-				VP->RemoveAllViewportWidgets();
-			}
+			// NOTE: do NOT RemoveAllViewportWidgets() here. There is no menu to clear anymore, and on
+			// the client the pawn restarts AFTER the basket HUD was already added — clearing it here
+			// nuked the HUD and left the client on the empty (black) map. Just set game input.
 			PC->SetInputMode(FInputModeGameOnly());
 			PC->bShowMouseCursor = false;
 		}
