@@ -360,6 +360,19 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-13** — **Basket mechanics pass** (`PPPeachBasketUMGGame` + `PPBasketUMGTypes` +
+  `PPBasketWidgetLib`): (1) **steal cooldown** `StealCooldown=0.2s` (`StealTimer`) so two players stop
+  ping-ponging the ball. (2) **Hoop rim box**: replaced the proximity `TryScore` with `HoopInteract` —
+  solid LEFT/RIGHT edges bounce the ball (`RimRestitution`), score only when it drops through the open
+  TOP (down-crossing the rim centre line via `LastBallY`). New tunables `HoopHalfWidth/Height`,
+  `BallRadius`; box size exposed in `FPPBasketState.HoopHalfW/H` so the widget can draw a (debug-colour)
+  box and hide it later. (3) **Arms**: `FPPBasketChar` now carries `Shoulder` (fixed on body) + `Hand`
+  (grab/hold/throw point; held ball already sits here) so the widget draws the arm between them; helpers
+  `UPPBasketWidgetLib::ArmAngleDeg` + `SegmentLenPx`. New console keys: `stealcd hoopw hooph ballradius
+  rimrest shoulder`; `pp.basket.dump` now also lists char positions. Baked tuned layout defaults incl.
+  `char2=(0.57,0.6) char3=(0.70,0.18)`. **USER (widget):** draw the arm images (Shoulder→Hand) + the
+  hoop debug boxes in `WBP_BasketGame`. NOTE: a char start Y below `GroundY` snaps up to the floor on
+  tick 1 (single global floor) — char3 at 0.18 will sit at 0.6 unless we add a per-char floor.
 - **2026-06-13** — **Console tuning commands** (`Minigame/PPPeachBasketUMGGame.cpp`): `pp.basket <key>
   <v> [v2]`, `pp.basket.reset`, `pp.basket.dump` (FAutoConsoleCommandWithWorldAndArgs). Live-tune the
   basket from the `~` console with NO outliner / F8 / world juggling — the prior Details-panel path

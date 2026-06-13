@@ -12,10 +12,10 @@ APPPeachBasketUMGGame::APPPeachBasketUMGGame()
 	MinigameType = EMinigameType::PeachBasket;
 	Duration = 120.f; // 2 minutes, then most points wins (tie = both win, via base ForceResolve)
 
-	// Default start spots (on the floor): A on the left, B on the right.
+	// Start spots (normalised). Index 0,1 = team A (left), 2,3 = team B (right). Tuned live via console.
 	CharStartPositions = {
-		FVector2D(0.25, GroundY), FVector2D(0.38, GroundY), // team A
-		FVector2D(0.62, GroundY), FVector2D(0.75, GroundY)  // team B
+		FVector2D(0.25, 0.60), FVector2D(0.38, 0.60), // team A
+		FVector2D(0.57, 0.60), FVector2D(0.70, 0.18)  // team B
 	};
 }
 
@@ -67,7 +67,12 @@ void APPPeachBasketUMGGame::DebugSetTunable(const FString& InKey, const TArray<f
 	else if (Key == TEXT("armrate"))    { ArmRaiseRate = V0; }
 	else if (Key == TEXT("throwtime"))  { ThrowFlightTime = V0; }
 	else if (Key == TEXT("grab"))       { GrabRange = V0; }
-	else if (Key == TEXT("score"))      { ScoreRange = V0; }
+	else if (Key == TEXT("stealcd"))    { StealCooldown = V0; }
+	else if (Key == TEXT("shoulder"))   { ShoulderHeight = V0; }
+	else if (Key == TEXT("hoopw"))      { HoopHalfWidth = V0;  RepState.HoopHalfW = V0; }
+	else if (Key == TEXT("hooph"))      { HoopHalfHeight = V0; RepState.HoopHalfH = V0; }
+	else if (Key == TEXT("ballradius")) { BallRadius = V0; }
+	else if (Key == TEXT("rimrest"))    { RimRestitution = V0; }
 	else if (Key == TEXT("target"))     { TargetScore = FMath::RoundToInt(V0); }
 	else if (Key == TEXT("groundy"))    { GroundY = V0; }          // read every tick -> instant
 	else if (Key == TEXT("ballfloor"))  { BallFloorY = V0; }
@@ -83,13 +88,20 @@ void APPPeachBasketUMGGame::DebugSetTunable(const FString& InKey, const TArray<f
 
 FString APPPeachBasketUMGGame::DebugDumpTunables() const
 {
+	FString Chars;
+	for (int32 i = 0; i < CharStartPositions.Num(); ++i)
+	{
+		Chars += FString::Printf(TEXT(" char%d=(%.3f,%.3f)"), i, CharStartPositions[i].X, CharStartPositions[i].Y);
+	}
 	return FString::Printf(
 		TEXT("jump=%.3f slide=%.2f airdrag=%.2f lean=%.3f leanfreq=%.2f gravity=%.3f armrate=%.2f ")
-		TEXT("throwtime=%.2f grab=%.3f score=%.3f target=%d groundy=%.3f ballfloor=%.3f ")
-		TEXT("hoopleft=(%.3f,%.3f) hoopright=(%.3f,%.3f) ball=(%.3f,%.3f)"),
+		TEXT("throwtime=%.2f grab=%.3f stealcd=%.2f shoulder=%.3f target=%d groundy=%.3f ballfloor=%.3f ")
+		TEXT("hoopw=%.3f hooph=%.3f ballradius=%.3f rimrest=%.2f ")
+		TEXT("hoopleft=(%.3f,%.3f) hoopright=(%.3f,%.3f) ball=(%.3f,%.3f)%s"),
 		JumpImpulse, SlideFriction, AirDrag, MaxLean, LeanFreq, Gravity, ArmRaiseRate,
-		ThrowFlightTime, GrabRange, ScoreRange, TargetScore, GroundY, BallFloorY,
-		HoopLeftPos.X, HoopLeftPos.Y, HoopRightPos.X, HoopRightPos.Y, BallStartPos.X, BallStartPos.Y);
+		ThrowFlightTime, GrabRange, StealCooldown, ShoulderHeight, TargetScore, GroundY, BallFloorY,
+		HoopHalfWidth, HoopHalfHeight, BallRadius, RimRestitution,
+		HoopLeftPos.X, HoopLeftPos.Y, HoopRightPos.X, HoopRightPos.Y, BallStartPos.X, BallStartPos.Y, *Chars);
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -187,6 +199,8 @@ void APPPeachBasketUMGGame::SetupField()
 
 	RepState.HoopLeft  = HoopLeftPos;
 	RepState.HoopRight = HoopRightPos;
+	RepState.HoopHalfW = HoopHalfWidth;
+	RepState.HoopHalfH = HoopHalfHeight;
 	RepState.Ball = BallStartPos;
 	RepState.ScoreA = 0;
 	RepState.ScoreB = 0;
@@ -194,6 +208,8 @@ void APPPeachBasketUMGGame::SetupField()
 	BallHolder = -1;
 	BallVel = FVector2D::ZeroVector;
 	ThrowCooldown = 0.f;
+	StealTimer = 0.f;
+	LastBallY = BallStartPos.Y;
 	SimTime = 0.f;
 }
 
@@ -210,6 +226,7 @@ void APPPeachBasketUMGGame::ServerTick(float Dt)
 {
 	SimTime += Dt;
 	ThrowCooldown = FMath::Max(0.f, ThrowCooldown - Dt);
+	StealTimer = FMath::Max(0.f, StealTimer - Dt);
 
 	const float MinX = 0.03f, MaxX = 0.97f;
 
@@ -239,6 +256,11 @@ void APPPeachBasketUMGGame::ServerTick(float Dt)
 		// Side walls.
 		if (C.Pos.X < MinX) { C.Pos.X = MinX; CharVel[i].X =  FMath::Abs(CharVel[i].X) * 0.3; }
 		if (C.Pos.X > MaxX) { C.Pos.X = MaxX; CharVel[i].X = -FMath::Abs(CharVel[i].X) * 0.3; }
+
+		// Arm endpoints for the widget: Shoulder (fixed on the body) -> Hand (grab/hold/throw point).
+		const FVector2D Up = UpVec(C.Lean);
+		C.Shoulder = C.Pos + Up * ShoulderHeight;
+		C.Hand     = C.Pos + Up * (0.04f + C.ArmAngle * 0.11f);
 	}
 
 	// ---- ball ----
@@ -264,7 +286,9 @@ void APPPeachBasketUMGGame::ServerTick(float Dt)
 	}
 
 	TryGrabSteal(); // hands grab/steal ALWAYS (not gated by Primary)
-	TryScore();
+	HoopInteract(); // rim bounce + score (only meaningful while the ball is free)
+
+	LastBallY = RepState.Ball.Y; // for next frame's top-down score-line crossing
 }
 
 FVector2D APPPeachBasketUMGGame::HandOf(int32 Index) const
@@ -300,15 +324,16 @@ void APPPeachBasketUMGGame::TryGrabSteal()
 			const double D = FVector2D::DistSquared(HandOf(i), RepState.Ball);
 			if (D < BestD) { BestD = D; Best = i; }
 		}
-		if (Best >= 0) { BallHolder = Best; BallVel = FVector2D::ZeroVector; }
+		if (Best >= 0) { BallHolder = Best; BallVel = FVector2D::ZeroVector; StealTimer = StealCooldown; }
 	}
-	else if (BallHolder >= 0 && RepState.Chars.IsValidIndex(BallHolder))
+	else if (BallHolder >= 0 && RepState.Chars.IsValidIndex(BallHolder) && StealTimer <= 0.f)
 	{
+		// Steals are blocked for StealCooldown after the last grab/steal -> no constant ping-pong.
 		const int32 HolderTeam = RepState.Chars[BallHolder].Team;
 		for (int32 i = 0; i < RepState.Chars.Num(); ++i)
 		{
 			if (i == BallHolder || RepState.Chars[i].Team == HolderTeam) { continue; }
-			if (FVector2D::DistSquared(HandOf(i), RepState.Ball) < R2) { BallHolder = i; break; }
+			if (FVector2D::DistSquared(HandOf(i), RepState.Ball) < R2) { BallHolder = i; StealTimer = StealCooldown; break; }
 		}
 	}
 
@@ -318,15 +343,48 @@ void APPPeachBasketUMGGame::TryGrabSteal()
 	}
 }
 
-void APPPeachBasketUMGGame::TryScore()
+void APPPeachBasketUMGGame::HoopInteract()
 {
 	if (BallHolder >= 0)
 	{
-		return;
+		return; // ball is held — no rim physics / scoring
 	}
-	const float R2 = ScoreRange * ScoreRange;
-	if (FVector2D::DistSquared(RepState.Ball, RepState.HoopRight) < R2)      { DoScore(EPPTeam::TeamA); } // A -> right hoop
-	else if (FVector2D::DistSquared(RepState.Ball, RepState.HoopLeft) < R2)  { DoScore(EPPTeam::TeamB); }
+
+	const float HW = HoopHalfWidth;
+	const float HH = HoopHalfHeight;
+	const float r  = BallRadius;
+	FVector2D& B   = RepState.Ball;
+
+	// One hoop: bounce the ball off the solid LEFT/RIGHT edges (the "rim"); score when it drops through
+	// the open top (crosses the rim's centre line going DOWN while inside the opening). Returns true on score.
+	auto Hoop = [&](const FVector2D& C) -> bool
+	{
+		const bool bInBand = (B.Y > C.Y - HH - r) && (B.Y < C.Y + HH + r);
+		if (bInBand)
+		{
+			// Solid side edges (act from both faces so the ball can't enter from the side).
+			const double L = C.X - HW;
+			const double Rt = C.X + HW;
+			if (FMath::Abs(B.X - L) < r)
+			{
+				if (B.X >= L) { B.X = L + r; if (BallVel.X < 0.f) BallVel.X = -BallVel.X * RimRestitution; }
+				else          { B.X = L - r; if (BallVel.X > 0.f) BallVel.X = -BallVel.X * RimRestitution; }
+			}
+			if (FMath::Abs(B.X - Rt) < r)
+			{
+				if (B.X <= Rt) { B.X = Rt - r; if (BallVel.X > 0.f) BallVel.X = -BallVel.X * RimRestitution; }
+				else           { B.X = Rt + r; if (BallVel.X < 0.f) BallVel.X = -BallVel.X * RimRestitution; }
+			}
+		}
+
+		// Score: inside the opening horizontally, dropping down across the rim centre line.
+		const bool bInsideX = (B.X > C.X - HW) && (B.X < C.X + HW);
+		const bool bCrossedDown = (LastBallY >= C.Y) && (B.Y < C.Y) && (BallVel.Y < 0.f);
+		return bInsideX && bCrossedDown;
+	};
+
+	if (Hoop(RepState.HoopRight))     { DoScore(EPPTeam::TeamA); } // A -> right hoop
+	else if (Hoop(RepState.HoopLeft)) { DoScore(EPPTeam::TeamB); }
 }
 
 void APPPeachBasketUMGGame::ThrowFrom(int32 Index)

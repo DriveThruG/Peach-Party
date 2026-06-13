@@ -73,12 +73,20 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ArmRaiseRate = 2.0f;  // 0..1 per second
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ThrowFlightTime = 0.9f;
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float GrabRange = 0.075f;
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ScoreRange = 0.06f;
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float GroundY = 0.6f;       // char rest height — set to your background's FLOOR line
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float BallFloorY = 0.6f;    // ball rest height (= GroundY so the ball rests at the players' feet)
+	// After a grab/steal, no one can steal the ball for this long (stops 2 players ping-ponging it).
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float StealCooldown = 0.2f;
+	// Visual offset of the shoulder (arm's fixed end) up the body from Pos.
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ShoulderHeight = 0.03f;
 	// Layout: match these to where your hoop images sit (normalised). A scores in the RIGHT hoop.
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopLeftPos = FVector2D(0.10, 0.855);
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopRightPos = FVector2D(0.72, 0.855);
+	// Hoop "rim" box: solid LEFT/RIGHT edges (ball bounces), open TOP (ball drops through to score).
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float HoopHalfWidth = 0.06f;
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float HoopHalfHeight = 0.04f;
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float BallRadius = 0.025f;
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float RimRestitution = 0.5f; // 0 = dead, 1 = bouncy
 
 	// Start coordinates (normalised). 4 chars: index 0,1 = team A (left), 2,3 = team B (right).
 	// Defaults set in the constructor; edit per element in a BP subclass. Ball start too.
@@ -92,12 +100,14 @@ private:
 	FVector2D BallVel = FVector2D::ZeroVector;
 	int32 BallHolder = -1;         // index into Chars, or -1 = free
 	float ThrowCooldown = 0.f;
+	float StealTimer = 0.f;        // counts down after a grab/steal; >0 blocks steals (anti ping-pong)
+	float LastBallY = 0.f;         // previous frame's ball Y, for top-down score-line crossing
 	float SimTime = 0.f;
 
 	void SetupField();
 	void ServerTick(float Dt);
 	void TryGrabSteal();
-	void TryScore();
+	void HoopInteract();           // rim bounce off the hoop box sides + score when dropping through the top
 	void ThrowFrom(int32 Index);
 	void DoScore(EPPTeam ScoringTeam);
 	void ResetPositions();
@@ -106,5 +116,4 @@ private:
 	FVector2D HandOf(int32 Index) const;
 	bool IsGrounded(int32 Index) const;
 	void CharsOfPlayer(const APPPlayerState* Player, int32& OutA, int32& OutB) const;
-	EPPTeam TargetTeamHoopOwner(int32 Index) const; // which team this char scores for
 };

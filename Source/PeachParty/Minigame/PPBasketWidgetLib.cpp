@@ -14,3 +14,19 @@ void UPPBasketWidgetLib::SetCanvasPos(UWidget* Element, FVector2D NormPos, FVect
 		CanvasSlot->SetPosition(Pixel);
 	}
 }
+
+float UPPBasketWidgetLib::ArmAngleDeg(FVector2D Shoulder, FVector2D Hand, FVector2D CanvasSize)
+{
+	// Screen-space delta (UMG Y grows DOWN, so flip Y). Angle is clockwise from +X, i.e. what
+	// Set Render Transform Angle expects. Pixel deltas (not normalised) so non-square canvases look right.
+	const double Dx = (Hand.X - Shoulder.X) * CanvasSize.X;
+	const double Dy = (Shoulder.Y - Hand.Y) * CanvasSize.Y; // flip
+	return static_cast<float>(FMath::RadiansToDegrees(FMath::Atan2(Dy, Dx)));
+}
+
+float UPPBasketWidgetLib::SegmentLenPx(FVector2D A, FVector2D B, FVector2D CanvasSize)
+{
+	const double Dx = (B.X - A.X) * CanvasSize.X;
+	const double Dy = (B.Y - A.Y) * CanvasSize.Y;
+	return static_cast<float>(FMath::Sqrt(Dx * Dx + Dy * Dy));
+}
