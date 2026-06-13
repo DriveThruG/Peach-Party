@@ -33,9 +33,8 @@ var last_ball_y := 0.0   # previous frame's ball Y, for top-down rim scoring
 var hud: CanvasLayer
 var score_label: Label
 
-# Collision.
+# Collision (radius around each character's torso centre).
 const PLAYER_RADIUS := 32.0
-const PLAYER_TORSO := Vector2(0, -80)   # torso centre relative to the feet, for ball collision
 
 func _ready() -> void:
 	var bg := Sprite2D.new()
@@ -212,19 +211,18 @@ func _show_goal() -> void:
 	tw.set_parallel(false)
 	tw.tween_callback(label.queue_free)
 
-# ---- collision ----
+# ---- collision (around the TORSO centre, which sways with the lean — not the feet) ----
 func _separate_players() -> void:
-	# Soft circle separation so two characters can't stand on the same spot.
 	var min_d := PLAYER_RADIUS * 2.0
 	for i in range(players.size()):
 		for j in range(i + 1, players.size()):
 			var a = players[i]
 			var b = players[j]
-			var d: Vector2 = b.position - a.position
+			var d: Vector2 = b.torso_pos() - a.torso_pos()
 			var dist: float = d.length()
 			if dist < min_d and dist > 0.01:
 				var push: Vector2 = (d / dist) * (min_d - dist) * 0.5
-				a.position -= push
+				a.position -= push   # move the feet; the torso follows
 				b.position += push
 
 func _ball_vs_players() -> void:
@@ -232,7 +230,7 @@ func _ball_vs_players() -> void:
 	# the hand check runs first and reaches further than the torso.
 	var min_d: float = PLAYER_RADIUS + ball.radius
 	for p in players:
-		var c: Vector2 = p.position + PLAYER_TORSO
+		var c: Vector2 = p.torso_pos()
 		var d: Vector2 = ball.position - c
 		var dist: float = d.length()
 		if dist < min_d and dist > 0.01:
