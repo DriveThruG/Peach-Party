@@ -69,10 +69,13 @@ void APPPeachBasketUMGGame::DebugSetTunable(const FString& InKey, const TArray<f
 	else if (Key == TEXT("grab"))       { GrabRange = V0; }
 	else if (Key == TEXT("stealcd"))    { StealCooldown = V0; }
 	else if (Key == TEXT("shoulder"))   { ShoulderHeight = V0; }
-	else if (Key == TEXT("handbase"))   { HandBase = V0; }
-	else if (Key == TEXT("handrange"))  { HandRange = V0; }
+	else if (Key == TEXT("armlength"))  { ArmLength = V0; }
+	else if (Key == TEXT("armrest"))    { ArmRestDeg = V0; }
+	else if (Key == TEXT("armraised"))  { ArmRaisedDeg = V0; }
 	else if (Key == TEXT("hoopw"))      { HoopHalfWidth = V0;  RepState.HoopHalfW = V0; }
 	else if (Key == TEXT("hooph"))      { HoopHalfHeight = V0; RepState.HoopHalfH = V0; }
+	else if (Key == TEXT("rimleft") && V.Num() >= 2)  { RimLeftPos  = FVector2D(V[0], V[1]); RepState.RimLeft  = RimLeftPos; }
+	else if (Key == TEXT("rimright") && V.Num() >= 2) { RimRightPos = FVector2D(V[0], V[1]); RepState.RimRight = RimRightPos; }
 	else if (Key == TEXT("ballradius")) { BallRadius = V0; RepState.BallRadius = V0; }
 	else if (Key == TEXT("rimrest"))    { RimRestitution = V0; }
 	else if (Key == TEXT("target"))     { TargetScore = FMath::RoundToInt(V0); }
@@ -97,13 +100,14 @@ FString APPPeachBasketUMGGame::DebugDumpTunables() const
 	}
 	return FString::Printf(
 		TEXT("jump=%.3f slide=%.2f airdrag=%.2f lean=%.3f leanfreq=%.2f gravity=%.3f armrate=%.2f ")
-		TEXT("throwtime=%.2f grab=%.3f stealcd=%.2f shoulder=%.3f handbase=%.3f handrange=%.3f ")
+		TEXT("throwtime=%.2f grab=%.3f stealcd=%.2f shoulder=%.3f armlength=%.3f armrest=%.0f armraised=%.0f ")
 		TEXT("target=%d groundy=%.3f ballfloor=%.3f hoopw=%.3f hooph=%.3f ballradius=%.3f rimrest=%.2f ")
-		TEXT("hoopleft=(%.3f,%.3f) hoopright=(%.3f,%.3f) ball=(%.3f,%.3f)%s"),
+		TEXT("hoopleft=(%.3f,%.3f) hoopright=(%.3f,%.3f) rimleft=(%.3f,%.3f) rimright=(%.3f,%.3f) ball=(%.3f,%.3f)%s"),
 		JumpImpulse, SlideFriction, AirDrag, MaxLean, LeanFreq, Gravity, ArmRaiseRate,
-		ThrowFlightTime, GrabRange, StealCooldown, ShoulderHeight, HandBase, HandRange,
+		ThrowFlightTime, GrabRange, StealCooldown, ShoulderHeight, ArmLength, ArmRestDeg, ArmRaisedDeg,
 		TargetScore, GroundY, BallFloorY, HoopHalfWidth, HoopHalfHeight, BallRadius, RimRestitution,
-		HoopLeftPos.X, HoopLeftPos.Y, HoopRightPos.X, HoopRightPos.Y, BallStartPos.X, BallStartPos.Y, *Chars);
+		HoopLeftPos.X, HoopLeftPos.Y, HoopRightPos.X, HoopRightPos.Y,
+		RimLeftPos.X, RimLeftPos.Y, RimRightPos.X, RimRightPos.Y, BallStartPos.X, BallStartPos.Y, *Chars);
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -201,6 +205,8 @@ void APPPeachBasketUMGGame::SetupField()
 
 	RepState.HoopLeft  = HoopLeftPos;
 	RepState.HoopRight = HoopRightPos;
+	RepState.RimLeft   = RimLeftPos;
+	RepState.RimRight  = RimRightPos;
 	RepState.HoopHalfW = HoopHalfWidth;
 	RepState.HoopHalfH = HoopHalfHeight;
 	RepState.BallRadius = BallRadius;
@@ -260,10 +266,9 @@ void APPPeachBasketUMGGame::ServerTick(float Dt)
 		if (C.Pos.X < MinX) { C.Pos.X = MinX; CharVel[i].X =  FMath::Abs(CharVel[i].X) * 0.3; }
 		if (C.Pos.X > MaxX) { C.Pos.X = MaxX; CharVel[i].X = -FMath::Abs(CharVel[i].X) * 0.3; }
 
-		// Arm endpoints for the widget: Shoulder (fixed on the body) -> Hand (grab/hold/throw point).
-		const FVector2D Up = UpVec(C.Lean);
-		C.Shoulder = C.Pos + Up * ShoulderHeight;
-		C.Hand     = C.Pos + Up * (HandBase + C.ArmAngle * HandRange);
+		// Arm endpoints for the widget: Shoulder (pivot, fixed on the body) -> Hand (fixed-length, rotates).
+		C.Shoulder = ShoulderOf(i);
+		C.Hand     = HandOf(i);
 	}
 
 	// ---- ball ----
@@ -294,6 +299,16 @@ void APPPeachBasketUMGGame::ServerTick(float Dt)
 	LastBallY = RepState.Ball.Y; // for next frame's top-down score-line crossing
 }
 
+FVector2D APPPeachBasketUMGGame::ShoulderOf(int32 Index) const
+{
+	if (!RepState.Chars.IsValidIndex(Index))
+	{
+		return RepState.Ball;
+	}
+	const FPPBasketChar& C = RepState.Chars[Index];
+	return C.Pos + UpVec(C.Lean) * ShoulderHeight;
+}
+
 FVector2D APPPeachBasketUMGGame::HandOf(int32 Index) const
 {
 	if (!RepState.Chars.IsValidIndex(Index))
@@ -301,8 +316,15 @@ FVector2D APPPeachBasketUMGGame::HandOf(int32 Index) const
 		return RepState.Ball;
 	}
 	const FPPBasketChar& C = RepState.Chars[Index];
-	const float HandLen = HandBase + C.ArmAngle * HandRange; // arms up -> hand higher
-	return C.Pos + UpVec(C.Lean) * HandLen;
+
+	// Fixed-length arm pinned at the shoulder; charging ROTATES it (rest angle -> raised angle). Team A
+	// (left, faces right) swings on the right; team B is mirrored. Body lean rotates the whole arm too.
+	const double SwingDeg = FMath::Lerp((double)ArmRestDeg, (double)ArmRaisedDeg, (double)C.ArmAngle)
+	                      + FMath::RadiansToDegrees((double)C.Lean);
+	const double ThetaDeg = (C.Team == 1) ? SwingDeg : (180.0 - SwingDeg);
+	const double Theta = FMath::DegreesToRadians(ThetaDeg);
+	const FVector2D Dir(FMath::Cos(Theta), FMath::Sin(Theta));
+	return ShoulderOf(Index) + Dir * ArmLength;
 }
 
 bool APPPeachBasketUMGGame::IsGrounded(int32 Index) const
@@ -386,8 +408,8 @@ void APPPeachBasketUMGGame::HoopInteract()
 		return bInsideX && bCrossedDown;
 	};
 
-	if (Hoop(RepState.HoopRight))     { DoScore(EPPTeam::TeamA); } // A -> right hoop
-	else if (Hoop(RepState.HoopLeft)) { DoScore(EPPTeam::TeamB); }
+	if (Hoop(RepState.RimRight))     { DoScore(EPPTeam::TeamA); } // A -> right rim
+	else if (Hoop(RepState.RimLeft)) { DoScore(EPPTeam::TeamB); }
 }
 
 void APPPeachBasketUMGGame::ThrowFrom(int32 Index)
@@ -397,7 +419,7 @@ void APPPeachBasketUMGGame::ThrowFrom(int32 Index)
 		return;
 	}
 	const FPPBasketChar& C = RepState.Chars[Index];
-	const FVector2D Target = (C.Team == 1) ? RepState.HoopRight : RepState.HoopLeft;
+	const FVector2D Target = (C.Team == 1) ? RepState.RimRight : RepState.RimLeft; // aim at the scoring rim
 	const FVector2D S = RepState.Ball;
 	const float Tf = FMath::Max(0.2f, ThrowFlightTime);
 	const float Quality = FMath::Clamp(C.ArmAngle, 0.f, 1.f); // arms high at release -> full power -> hits

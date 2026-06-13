@@ -35,8 +35,10 @@ struct FPPBasketState
 
 	UPROPERTY(BlueprintReadOnly, Category = "PeachParty|Basket") TArray<FPPBasketChar> Chars;
 	UPROPERTY(BlueprintReadOnly, Category = "PeachParty|Basket") FVector2D Ball = FVector2D(0.5, 0.5);
-	UPROPERTY(BlueprintReadOnly, Category = "PeachParty|Basket") FVector2D HoopLeft = FVector2D(0.10, 0.62);
+	UPROPERTY(BlueprintReadOnly, Category = "PeachParty|Basket") FVector2D HoopLeft = FVector2D(0.10, 0.62);  // hoop IMAGE anchor
 	UPROPERTY(BlueprintReadOnly, Category = "PeachParty|Basket") FVector2D HoopRight = FVector2D(0.90, 0.62);
+	UPROPERTY(BlueprintReadOnly, Category = "PeachParty|Basket") FVector2D RimLeft = FVector2D(0.10, 0.62);   // scoring rim (debug box)
+	UPROPERTY(BlueprintReadOnly, Category = "PeachParty|Basket") FVector2D RimRight = FVector2D(0.90, 0.62);
 	// Hoop box size (half-extents, normalised). Draw a debug box of (2*HoopHalfW x 2*HoopHalfH) centred on
 	// each hoop: the LEFT/RIGHT edges are solid (the ball bounces off them like a rim); the ball scores by
 	// dropping through the open TOP. Hide these boxes once the layout is dialled in.

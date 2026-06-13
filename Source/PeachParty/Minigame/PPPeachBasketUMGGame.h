@@ -77,14 +77,19 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float BallFloorY = 0.4f;    // ball rest height — tune to your background's floor line
 	// After a grab/steal, no one can steal the ball for this long (stops 2 players ping-ponging it).
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float StealCooldown = 0.2f;
-	// Arm geometry relative to Pos (tune so the green debug line sits on the body's arm):
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ShoulderHeight = 0.03f; // shoulder (fixed end) offset up from Pos
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float HandBase = 0.04f;       // hand distance from Pos with arms DOWN
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float HandRange = 0.11f;      // extra hand distance at full arms-UP
-	// Layout: match these to where your hoop images sit (normalised). A scores in the RIGHT hoop.
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopLeftPos = FVector2D(0.235, 0.66);
-	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopRightPos = FVector2D(0.795, 0.66);
-	// Hoop "rim" box: solid LEFT/RIGHT edges (ball bounces), open TOP (ball drops through to score).
+	// Arm = a FIXED-LENGTH limb pinned at the shoulder; charging ROTATES it (the hand swings on an arc),
+	// it does NOT lengthen. Tune so the green debug line lies on the body's arm.
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ShoulderHeight = 0.03f; // shoulder (pivot) offset up from Pos
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ArmLength = 0.09f;      // fixed shoulder->hand length
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ArmRestDeg = -75.f;     // arm angle (deg) with arms DOWN
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float ArmRaisedDeg = 75.f;    // arm angle (deg) at full charge (arms UP)
+	// HOOP IMAGE anchor (only what your widget uses to place the hoop picture). A scores in the RIGHT hoop.
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopLeftPos = FVector2D(0.10, 0.855);
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D HoopRightPos = FVector2D(0.72, 0.855);
+	// RIM box (scoring + debug box) — independent of the hoop image, place it ON the visible ring.
+	// Solid LEFT/RIGHT edges (ball bounces), open TOP (ball drops through to score).
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D RimLeftPos = FVector2D(0.235, 0.66);
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") FVector2D RimRightPos = FVector2D(0.795, 0.66);
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float HoopHalfWidth = 0.035f;
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float HoopHalfHeight = 0.03f;
 	UPROPERTY(EditAnywhere, Category = "PeachParty|Basket") float BallRadius = 0.025f;
@@ -115,7 +120,8 @@ private:
 	void ResetPositions();
 
 	FVector2D UpVec(float LeanRad) const { return FVector2D(FMath::Sin(LeanRad), FMath::Cos(LeanRad)); }
-	FVector2D HandOf(int32 Index) const;
+	FVector2D ShoulderOf(int32 Index) const; // arm pivot, fixed on the body
+	FVector2D HandOf(int32 Index) const;     // far end of the fixed-length arm (rotates with ArmAngle)
 	bool IsGrounded(int32 Index) const;
 	void CharsOfPlayer(const APPPlayerState* Player, int32& OutA, int32& OutB) const;
 };

@@ -60,8 +60,8 @@ int32 UPPBasketDebugWidget::NativePaint(const FPaintArgs& Args, const FGeometry&
 		Line(TR, BR, FLinearColor::Yellow, 4.f);
 	};
 
-	DrawHoop(S.HoopLeft, S.HoopHalfW, S.HoopHalfH);
-	DrawHoop(S.HoopRight, S.HoopHalfW, S.HoopHalfH);
+	DrawHoop(S.RimLeft, S.HoopHalfW, S.HoopHalfH);
+	DrawHoop(S.RimRight, S.HoopHalfW, S.HoopHalfH);
 
 	// Ball marker (orange box of the collision radius).
 	{
