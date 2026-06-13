@@ -221,9 +221,18 @@ func _separate_players() -> void:
 			var d: Vector2 = b.torso_pos() - a.torso_pos()
 			var dist: float = d.length()
 			if dist < min_d and dist > 0.01:
-				var push: Vector2 = (d / dist) * (min_d - dist) * 0.5
-				a.position -= push   # move the feet; the torso follows
-				b.position += push
+				var n: Vector2 = d / dist
+				var overlap: float = min_d - dist
+				# Gentle position correction (no instant teleport-slide).
+				a.position -= n * overlap * 0.3
+				b.position += n * overlap * 0.3
+				# Knockback + TOPPLE: strength from how hard they ran into each other; the spring in
+				# player.gd auto-rights them. A diagonal jump-in tips harder (more closing speed).
+				var closing: float = (a.vel - b.vel).dot(n)
+				var strength: float = clampf(absf(closing) * 0.6 + overlap * 4.0, 0.0, 300.0)
+				var tg := 0.02
+				a.bump(-n * strength, -n.x * tg * strength)
+				b.bump(n * strength, n.x * tg * strength)
 
 func _ball_vs_players() -> void:
 	# The free ball bounces off player torsos (it can't pass through them). Grabbing still wins because

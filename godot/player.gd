@@ -11,6 +11,10 @@ const AIR_DRAG := 0.5
 const GROUND_FRICTION := 7.0
 const MAX_LEAN := 0.26
 const LEAN_SPEED := 2.2
+# Wobble: a bump tips the body (tilt); a spring rights it again. Underdamped = a little wobble back.
+const TILT_STIFFNESS := 90.0
+const TILT_DAMPING := 8.0
+const MAX_TILT := 1.5
 const ARM_RAISE_SPEED := 3.0
 const ARM_REST_DEG := 0.0
 const ARM_RAISED_DEG := -150.0
@@ -37,6 +41,8 @@ var arm_amt := 0.0
 var just_released := false   # true only on the frame the key is released
 var sim_time := 0.0
 var was_charging := false
+var tilt := 0.0              # extra body rotation from bumps (springs back to 0)
+var tilt_vel := 0.0
 
 var body: Node2D
 var shoulder_node: Node2D
@@ -102,7 +108,11 @@ func tick(delta: float) -> void:
 		return
 	sim_time += delta
 
-	body.rotation = MAX_LEAN * sin(sim_time * LEAN_SPEED + lean_phase)
+	# Pendulum lean + a spring-damped tilt (auto-rights the body after a bump).
+	var lean := MAX_LEAN * sin(sim_time * LEAN_SPEED + lean_phase)
+	tilt_vel += (-TILT_STIFFNESS * tilt - TILT_DAMPING * tilt_vel) * delta
+	tilt = clampf(tilt + tilt_vel * delta, -MAX_TILT, MAX_TILT)
+	body.rotation = lean + tilt
 
 	var charging := Input.is_physical_key_pressed(charge_key)
 	just_released = was_charging and not charging
@@ -133,3 +143,8 @@ func tick(delta: float) -> void:
 
 func is_grounded() -> bool:
 	return position.y >= ground_y - 1.0
+
+# Knockback + topple from a collision (main.gd calls this).
+func bump(impulse: Vector2, tilt_impulse: float) -> void:
+	vel += impulse
+	tilt_vel += tilt_impulse
