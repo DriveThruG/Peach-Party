@@ -29,12 +29,13 @@ var steal_cooldown := 0.0
 var ball_holder = null   # which player currently holds the ball (null = free)
 var last_ball_y := 0.0   # previous frame's ball Y, for top-down rim scoring
 
-# HUD + arm live-tuner.
+# HUD.
 var hud: CanvasLayer
 var score_label: Label
-var tune_label: Label
-var tune_shoulder := Vector2(-26, -262)   # matches player.gd SHOULDER default
-var tune_arm_pivot := 72.0                # matches player.gd ARM_HALF_H default
+
+# Collision.
+const PLAYER_RADIUS := 32.0
+const PLAYER_TORSO := Vector2(0, -80)   # torso centre relative to the feet, for ball collision
 
 func _ready() -> void:
 	var bg := Sprite2D.new()
@@ -78,12 +79,6 @@ func _build_hud() -> void:
 	hud.add_child(score_label)
 	_update_score_label()
 
-	# Arm tuner readout (bottom-left). Keys: J/L shoulder x, I/K shoulder y, U/O arm pivot.
-	tune_label = _make_label(20, Vector2(16, VIEW.y - 70), Vector2(700, 60))
-	tune_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	hud.add_child(tune_label)
-	_update_tune_label()
-
 func _make_label(font_size: int, pos: Vector2, sz: Vector2) -> Label:
 	var l := Label.new()
 	l.add_theme_font_size_override("font_size", font_size)
@@ -100,10 +95,9 @@ func _process(delta: float) -> void:
 	throw_cooldown = maxf(0.0, throw_cooldown - delta)
 	steal_cooldown = maxf(0.0, steal_cooldown - delta)
 
-	_tune_arms(delta)
-
 	for p in players:
 		p.tick(delta)
+	_separate_players()
 
 	if ball_holder == null:
 		# Grab: nearest hand within range (after the throw cooldown).
@@ -119,6 +113,7 @@ func _process(delta: float) -> void:
 				_set_holder(best)
 		if ball_holder == null:
 			ball.physics_step(delta)
+			_ball_vs_players()
 			_rim_interact()
 	else:
 		ball.position = ball_holder.hand_pos()
@@ -217,37 +212,35 @@ func _show_goal() -> void:
 	tw.set_parallel(false)
 	tw.tween_callback(label.queue_free)
 
-# ---- arm live-tuner (hold the keys; the readout shows the current values) ----
-func _tune_arms(delta: float) -> void:
-	var step := 70.0 * delta
-	var changed := false
-	if Input.is_physical_key_pressed(KEY_J):
-		tune_shoulder.x -= step
-		changed = true
-	if Input.is_physical_key_pressed(KEY_L):
-		tune_shoulder.x += step
-		changed = true
-	if Input.is_physical_key_pressed(KEY_I):
-		tune_shoulder.y -= step
-		changed = true
-	if Input.is_physical_key_pressed(KEY_K):
-		tune_shoulder.y += step
-		changed = true
-	if Input.is_physical_key_pressed(KEY_U):
-		tune_arm_pivot -= step
-		changed = true
-	if Input.is_physical_key_pressed(KEY_O):
-		tune_arm_pivot += step
-		changed = true
-	if changed:
-		for p in players:
-			p.update_rig(tune_shoulder, tune_arm_pivot)
-		_update_tune_label()
+# ---- collision ----
+func _separate_players() -> void:
+	# Soft circle separation so two characters can't stand on the same spot.
+	var min_d := PLAYER_RADIUS * 2.0
+	for i in range(players.size()):
+		for j in range(i + 1, players.size()):
+			var a = players[i]
+			var b = players[j]
+			var d: Vector2 = b.position - a.position
+			var dist: float = d.length()
+			if dist < min_d and dist > 0.01:
+				var push: Vector2 = (d / dist) * (min_d - dist) * 0.5
+				a.position -= push
+				b.position += push
 
-func _update_tune_label() -> void:
-	if tune_label != null:
-		tune_label.text = "ARM TUNE  J/L shoulderX  I/K shoulderY  U/O arm-pivot   ->   SHOULDER=(%d, %d)  ARM_HALF_H=%d" % [
-			roundi(tune_shoulder.x), roundi(tune_shoulder.y), roundi(tune_arm_pivot)]
+func _ball_vs_players() -> void:
+	# The free ball bounces off player torsos (it can't pass through them). Grabbing still wins because
+	# the hand check runs first and reaches further than the torso.
+	var min_d := PLAYER_RADIUS + ball.radius
+	for p in players:
+		var c: Vector2 = p.position + PLAYER_TORSO
+		var d: Vector2 = ball.position - c
+		var dist: float = d.length()
+		if dist < min_d and dist > 0.01:
+			var n: Vector2 = d / dist
+			ball.position = c + n * min_d
+			var vn: float = ball.vel.dot(n)
+			if vn < 0.0:
+				ball.vel -= n * (vn * 1.4)
 
 func _reset_ball() -> void:
 	ball_holder = null

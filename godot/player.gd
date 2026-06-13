@@ -18,8 +18,9 @@ const PLAYER_SCALE := 0.44
 
 # Body-local anchors (feet at body origin; body extends up to y=-380):
 const BODY_HALF_H := 190.0
-const SHOULDER := Vector2(-26, -262)   # sits on the shoulder (further back than the chest)
-const ARM_HALF_H := 72.0
+const SHOULDER := Vector2(-34, -241)   # tuned: sits exactly on the shoulder
+const ARM_HALF_H := 72.0               # half the arm image height (for the hand position)
+const ARM_PIVOT_Y := 59.0              # tuned: where the arm rotates (stays pinned at the shoulder)
 
 # ---- config ----
 var charge_key := KEY_SPACE
@@ -66,12 +67,12 @@ func setup(body_path: String, arm_path: String, key: int, phase: float, in_groun
 	arm = Sprite2D.new()
 	arm.texture = load(arm_path)
 	arm.centered = true
-	arm.offset = Vector2(0, ARM_HALF_H)
+	arm.offset = Vector2(0, ARM_PIVOT_Y)
 	arm.z_index = 10        # arm in FRONT of the body AND in front of a held ball (ball sits at z=5)
 	shoulder_node.add_child(arm)
 
 	hand = Marker2D.new()
-	hand.position = Vector2(0, ARM_HALF_H * 2.0)
+	hand.position = Vector2(0, ARM_PIVOT_Y + ARM_HALF_H)
 	arm.add_child(hand)
 
 func hand_pos() -> Vector2:

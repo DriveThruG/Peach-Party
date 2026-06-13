@@ -380,6 +380,15 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-13** — **Godot port progress** (in `godot/`, GDScript, code-driven; run via Godot 4.3 F5).
+  Working: real sprites (background + 4 chars body+**parented arm** + 2 hoops + ball), pendulum-lean,
+  pendulum-JUMP horizontal movement, 4 chars (2/team share a key: SPACE/ENTER), ball grab/hold/steal/throw
+  (auto-aim at enemy rim, scaled by arm height), **rim** (side posts bounce, score only through the top),
+  floor aligned to hoop bases, held-ball z between body/arm, smooth **GOAL!** popup + score HUD,
+  player-player + ball-player **collision**. Tuned arm rig baked: `SHOULDER=(-34,-241)`, `ARM_PIVOT_Y=59`
+  (a live arm-tuner was used then removed). Files: `godot/project.godot`, `Main.tscn`, `main.gd` (orchestrator),
+  `player.gd`, `ball.gd`, art in `godot/art/*.png`. **Next:** Godot high-level multiplayer (host/join
+  127.0.0.1, both straight into the match), then polish (win condition, sounds). UE5 project is legacy.
 - **2026-06-13** — **Arm = rotating fixed-length limb; rim split from hoop image**: `HandOf` now swings a
   fixed-length arm pinned at the shoulder (`ArmRestDeg`→`ArmRaisedDeg` by `ArmAngle`, team-B mirrored,
   lean applied) — the hand traces an ARC, the arm doesn't lengthen (the previous "extend along up" was the
