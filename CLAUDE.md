@@ -7,6 +7,26 @@
 
 ---
 
+> ## 🔄 ENGINE PIVOT → GODOT 4 — 2026-06-13 (READ FIRST, supersedes everything below)
+> After endless UE5 round-trips on 2D visuals (the killer: Claude is headless and **cannot author
+> UE binary `.uasset`/widgets**, so all visual work bounced to the user across the code/content
+> boundary; UMG-as-renderer + normalised-anisotropic coords made arms/pivots/stretch a nightmare), the
+> user chose to **rebuild the game in Godot 4**. Rationale: Godot scenes are TEXT (Claude can author the
+> WHOLE project — scenes + scripts), 2D-native, sprite **parenting** makes "arm follows body" free, real
+> 2D physics, built-in authoritative multiplayer.
+> **New project lives in `godot/`** (same GitHub repo, so the user's clone/pull workflow is unchanged).
+> The UE5 project (`Source/`, `Content/`, `*.uproject`) stays as reference for now.
+> **Workflow now:** user installs **Godot 4.3+** (single portable .exe, no install), `git pull`, opens
+> `godot/project.godot` via Import, presses F5. Claude writes `.gd`/`.tscn`/`project.godot` as text;
+> still can't run/see (headless) so the user is the eyes, BUT no more binary-asset boundary.
+> **Still needs from user:** the **source PNG art** (characters/ball/hoop/background) — the UE `.uasset`
+> textures are unusable in Godot; drop PNGs into `godot/art/`.
+> **Build plan:** step 1 (DONE) = court + 2 players, pendulum-lean + jump + arm-raise (arm parented to
+> body = follows lean automatically). Next: ball + hoop (real 2D physics) + grab/throw/score → real PNG
+> art → Godot high-level multiplayer (host/join 127.0.0.1, both straight into the match).
+> Game design (unchanged from UE): one button (charge=jump-along-lean + raise arm, release=throw at the
+> enemy hoop scaled by arm height), hands grab/steal, first to N / timeout, local 2-player.
+
 > ## ⚠️ SCOPE RESET — 2026-06-13 (READ FIRST)
 > The project was **stripped down to ONLY the Peach Basket minigame** (user request, they kept a full
 > backup). **Deleted:** the 3D hub/first-person character, Peach Artillery, the old 3D basket, the Final
