@@ -7,15 +7,27 @@
 
 ---
 
+> ## ⚠️ SCOPE RESET — 2026-06-13 (READ FIRST)
+> The project was **stripped down to ONLY the Peach Basket minigame** (user request, they kept a full
+> backup). **Deleted:** the 3D hub/first-person character, Peach Artillery, the old 3D basket, the Final
+> combat phase (`Final/`), interaction/PC-stations (`Interaction/`), the menu + hosting/join flow
+> (`Menu/`, `PPGameInstance`), placeholder hub, team player-starts, lobby/ready/rounds/reward systems.
+> **Online removed entirely** — no menus, no host/join. **Flow now:** 2 players connect (PIE: Number of
+> Players = 2) → both are auto-assigned Team A/B and **dropped straight into one Peach Basket match**;
+> when it ends it auto-restarts after `RestartDelaySeconds`. Still a **listen server** (PIE multiplayer),
+> just no connection UI — two separate PCs would need a direct-connect added later.
+> **Sections 4–8, 9 below are HISTORICAL** (describe the deleted systems) — trust §9c "CURRENT STATE
+> (post-reset)" and §9b file map instead.
+
 ## 1. What this is
 
-**Peach Party** — a UE5 multiplayer party game. Players spawn in a school hub, sit at PCs to ready up,
-play 2 short minigames as 1v1s, gain team advantages, then enter a first-person combat finale.
+**Peach Basket** (was "Peach Party") — a UE5 **local 2-player** minigame. Two players, one button each
+(Space), play a 2D basket match rendered by a UMG widget. Server-authoritative on a listen server.
 
 - **Engine:** Unreal Engine **5.7** (user builds/tests on **5.7.4**, Windows + Visual Studio 2022).
-- **Multiplayer:** Listen Server, **2–8 players**.
+- **Multiplayer:** Listen Server, **2 players, local/PIE only** (online/hosting removed 2026-06-13).
 - **Repo:** GitHub `DriveThruG/Peach-Party` (branch `main`), SSH push set up from the dev box.
-- **Module:** single runtime module `PeachParty`, flat folders `Core/ Interaction/ Minigame/ Final/ Menu/`.
+- **Module:** single runtime module `PeachParty`, folders `Core/ Minigame/` only.
 
 ## 2. Dev environment — IMPORTANT constraints
 
@@ -276,28 +288,41 @@ pull`/build. **Always `git pull` first** — the user pushes `.uasset`/`.umap` f
 - Config flags (`Config/DefaultGame.ini`): `bDebugSkipToBasket=True` (straight into basket on PIE; still
   needs 2 players), `bDebugSoloBasket` (1-player free-play tuning, default off), `bSpawnPlaceholderHub` false.
 
-### Still TODO / not built
-- Final arena level + 3 `APPObjectiveRoom` (RoomIndex 1/2/3) + `APPRefillStation`/`APPGrabbableObject`.
-- The OLD 3D `PPPeachBasketGame` + `PPPeachArtilleryGame` are still around; artillery still 3D (could port
-  to UMG like basket). Real ragdoll, proper HUD, end-of-match screen, late-join/disconnect.
+## 9c. CURRENT STATE (post-reset 2026-06-13) — READ THIS
 
-## 9b. Where things live (file map)
+**Scope = Peach Basket only, local 2-player.** All code above the basket was deleted (see banner). The
+remaining flow is tiny and lives entirely in `Core/` + `Minigame/`:
+
+- `APPGameMode` (≈230 lines): sets the 4 default classes; `PostLogin` assigns Team A/B (smaller team) +
+  calls `TryStartMatch`; when one player is on each team it spawns ONE basket and binds both (their
+  `CurrentMinigame` + camera view target). `NotifyMinigameFinished` scores the winning team then
+  auto-restarts after `RestartDelaySeconds` (3s). `bDebugSoloBasket` → `StartSoloBasketPreview` (1 player,
+  free-play). Prefers `BP_PeachBasketUMG` if it exists.
+- `APPCharacter` = **input-only pawn**: no movement/look, capsule has NO collision + `AlwaysSpawn` (so the
+  2nd pawn never fails to spawn at the origin). Binds only `MGPrimary` (Space) → `ServerMinigameInput`.
+- `APPPlayerController`: forwards `ServerMinigameInput`, sets the view target, auto-shows `WBP_BasketGame`.
+- `APPPlayerState`: just `Team` + `CurrentMinigame`. `APPGameState`: `CurrentPhase`
+  (None/WaitingForPlayers/Playing) + team scores + active match.
+- The basket itself (`APPPeachBasketUMGGame` + `PPBasketUMGTypes` + `PPBasketWidgetLib` + `PPMinigameBase`)
+  is **unchanged** — same live-tuning (EditAnywhere tunables, `DebugResetField` button, `bFreePlay`).
+
+**USER MUST DO (content, Claude can't author .umap):** create ONE near-empty map at
+`/Game/PeachParty/Maps/BasketMap` (set as Editor Startup + Game Default; DefaultEngine.ini already points
+there). No actors needed in it — the match is a full-screen UMG widget. Optionally re-create
+`BP_PeachBasketUMG` (child of `APPPeachBasketUMGGame`) at `/Game/PeachParty/Blueprints/` for persistent
+tuning. PIE: **Number of Players = 2**, Net Mode = Listen Server → both drop straight into the basket.
+
+## 9b. Where things live (file map — post-reset)
 
 ```
 Source/PeachParty/
-  Core/           PPTypes, PPGameMode, PPGameState, PPPlayerState, PPPlayerController, PPCharacter,
-                  PPPlaceholderBlock, PPTeamPlayerStart (+ APPTeamA/BPlayerStart subclasses)
-  Interaction/    PPInteractable (interface), PPPCStation
-  Minigame/       PPVisual.h, PPMinigameBase,
-                  PPPeachBasketGame + PPBasketBall + PPBasketCharacter + PPBasket (OLD 3D version),
-                  PPPeachBasketUMGGame + PPBasketUMGTypes.h + PPBasketWidgetLib (NEW UMG version),
-                  PPPeachArtilleryGame + PPTank + PPProjectile + PPArtilleryTypes.h
-  Final/          PPClassTypes.h, PPRewardTypes.h,
-                  PPWaterProjectile, PPObjectiveRoom, PPGrabbableObject, PPRefillStation
-  Menu/           PPGameInstance (host/JoinByIP), PPMenuGameMode (no-pawn menu)
-Build.cs deps incl. UMG/Slate/SlateCore (needed for the widget HUD). PPGameMode is UCLASS(Config=Game).
-User-built content: WBP_MainMenu, WBP_MultiplayerMenu, WBP_BasketGame (+ WBP_ServerBrowser/Entry unused).
-User must create BP_PeachBasketUMG (child of PPPeachBasketUMGGame) at /Game/PeachParty/Blueprints/.
+  Core/       PPTypes, PPGameMode, PPGameState, PPPlayerState, PPPlayerController, PPCharacter
+  Minigame/   PPMinigameBase, PPMinigameTypes,
+              PPPeachBasketUMGGame + PPBasketUMGTypes.h + PPBasketWidgetLib   (the whole game)
+Build.cs deps: Core/CoreUObject/Engine/InputCore/UMG/Slate/SlateCore (Online + Paper2D module deps removed).
+.uproject plugins: EnhancedInput (+ Paper2D still enabled but unused). PPGameMode is UCLASS(Config=Game).
+Kept content (repo): WBP_BasketGame + Minigames/BasketPeach/Graphics/*. User creates BasketMap (+ optional
+BP_PeachBasketUMG). DefaultEngine.ini default map = /Game/PeachParty/Maps/BasketMap.
 ```
 
 ## 10. Conventions
@@ -314,13 +339,14 @@ User must create BP_PeachBasketUMG (child of PPPeachBasketUMGGame) at /Game/Peac
 Read this file first, then before answering:
 
 0. **`git pull --no-edit origin main` FIRST** — the user pushes `.uasset`/`.umap` between turns. Then
-   read §9 (END-OF-SESSION state). The live focus is the **UMG Peach Basket** — the user is building
-   `BP_PeachBasketUMG` and tuning it (floor/hoops/start positions/jump/slide) to match `WBP_BasketGame`.
-1. **Most likely asks:** (a) compile errors → fix the C++ file named in the error, push, ask to
-   pull+build; (b) "value X feels wrong in the basket" (jump/slide/throw/grab/layout) → it's a tunable on
-   `PPPeachBasketUMGGame` (§9), nudge the default OR tell them to drag it in `BP_PeachBasketUMG` (live, no
-   build); (c) widget node help → reference `GetState()` + `UPPBasketWidgetLib::SetCanvasPos`; (d)
-   multiplayer "can't find server" → it's the firewall/NULL beacon, steer to `JoinByIP` + `127.0.0.1`.
+   read the **SCOPE-RESET banner** + **§9c CURRENT STATE** — the project is now **Peach Basket only,
+   local 2-player** (everything else deleted 2026-06-13). Ignore the historical §4–§9.
+1. **Most likely asks:** (a) compile errors from the reset → fix the named Core file, push, ask to
+   pull+build (this is the expected first follow-up); (b) "value X feels wrong in the basket"
+   (jump/slide/throw/grab/layout) → tunable on `PPPeachBasketUMGGame`, drag it live in the running actor's
+   Details (EditAnywhere) or `BP_PeachBasketUMG`; (c) widget node help → `GetState()` +
+   `UPPBasketWidgetLib::SetCanvasPos`; (d) "both players don't start" → need PIE Number of Players = 2 and
+   the `BasketMap` to exist.
 2. **Can't read `.uasset`/`.umap`** (binary). For widget/layout debugging, ask the user to paste the graph
    as T3D text (select nodes → Ctrl+C) or send a screenshot.
 3. **Don't try to compile.** No engine on this box. Push and let the user build. New `.h`/`.cpp` files →
@@ -334,6 +360,19 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-13** — **SCOPE RESET to Peach-Basket-only, local 2-player** (user request; full backup kept).
+  Deleted ~22 source files + 130+ content assets: 3D/FP character internals, Peach Artillery
+  (`PPTank/Projectile/Artillery`), old 3D basket (`PPPeachBasketGame/Ball/Character/Basket/PPVisual`),
+  Final phase (`Final/`: water combat/rooms/classes/reward), `Interaction/` (PC-station), `Menu/`
+  (`PPGameInstance` host/join + `PPMenuGameMode`), `PPPlaceholderBlock`, `PPTeamPlayerStart`, + all menu
+  widgets / 3D school assets / ThirdPerson / maps. **Online removed entirely** (Build.cs Online+Paper2D
+  deps gone; `.uproject` OnlineSubsystemNull gone; DefaultEngine `GameInstanceClass`/`[OnlineSubsystem]`
+  gone). Rewrote the 6 Core classes minimal: `APPGameMode` = 2 players → assign A/B → spawn one basket →
+  bind both → auto-restart on finish (`bDebugSoloBasket` keeps the 1-player free-play tuning path);
+  `APPCharacter` = input-only pawn (Space → `ServerMinigameInput`, no collision, AlwaysSpawn);
+  `APPPlayerController`/`State`/`GameState` trimmed to view-target + input + team/score. Basket game itself
+  unchanged. DefaultEngine default map → `/Game/PeachParty/Maps/BasketMap` (**user must create it**).
+  UNVERIFIED — user compiles next; expect a couple of error round-trips.
 - **2026-06-12** — **Live basket tuning** (kill the edit→compile→PIE→close loop): (1) all
   `PPPeachBasketUMGGame` tunables `EditDefaultsOnly`→`EditAnywhere` so the RUNNING actor is editable in the
   PIE Details panel — feel values are read every Tick (instant), layout/start values apply via the new

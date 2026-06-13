@@ -2,7 +2,7 @@
 	"FileVersion": 3,
 	"EngineAssociation": "5.7",
 	"Category": "",
-	"Description": "Peach Party - multiplayer party game (listen server, 2-8 players).",
+	"Description": "Peach Basket - local 2-player minigame (listen server, PIE).",
 	"Modules": [
 		{
 			"Name": "PeachParty",
@@ -17,10 +17,6 @@
 		},
 		{
 			"Name": "Paper2D",
-			"Enabled": true
-		},
-		{
-			"Name": "OnlineSubsystemNull",
 			"Enabled": true
 		}
 	]
