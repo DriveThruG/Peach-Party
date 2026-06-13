@@ -1,54 +1,52 @@
 extends Node2D
-# One basket character. Tree:
-#   self (FEET; scale.x flipped for team B so it faces left)
-#   └─ Body  (rotates for pendulum lean; pivots at the feet)
-#      └─ Shoulder (fixed point on the body)
-#         └─ Arm (hangs down; rotates LOCALLY for charge)  ← child of Body = follows the lean for free
-#            └─ Hand (Marker2D, far end = grab/throw point, next step)
-#
-# Movement = the Original mechanic: pressing the key JUMPS ALONG THE CURRENT LEAN, so timing the jump at
-# a pendulum extreme moves you sideways. Two chars per team share one key, so a press scatters both.
+# One basket character. main.gd drives it via tick(delta) (deterministic order, so grab/throw read fresh
+# state). Tree: self(feet) > Body(lean) > Shoulder > Arm(charge rotates it) > Hand(grab/throw point).
+# The Arm is a CHILD of Body, so it follows the lean for free.
 
 # ---- feel tunables ----
 const GRAVITY := 1600.0
-const JUMP_SPEED := 720.0         # jump impulse magnitude (along the lean)
-const SIDE_FACTOR := 1.15         # how strongly the lean turns into sideways travel
+const JUMP_SPEED := 720.0
+const SIDE_FACTOR := 1.15
 const AIR_DRAG := 0.5
 const GROUND_FRICTION := 7.0
-const MAX_LEAN := 0.26            # radians of pendulum tilt
+const MAX_LEAN := 0.26
 const LEAN_SPEED := 2.2
 const ARM_RAISE_SPEED := 3.0
-const ARM_REST_DEG := 0.0         # arm hangs straight down (texture's natural pose)
-const ARM_RAISED_DEG := -150.0    # swing up & forward at full charge (flip sign if it swings backward)
+const ARM_REST_DEG := 0.0
+const ARM_RAISED_DEG := -150.0
 const PLAYER_SCALE := 0.44
 
-# Body-local anchors (feet at body origin; body image extends UP to y=-380):
+# Body-local anchors (feet at body origin; body extends up to y=-380):
 const BODY_HALF_H := 190.0
-const SHOULDER := Vector2(2, -262)
+const SHOULDER := Vector2(-16, -262)   # moved BACK from the chest so the arm sits on the shoulder
 const ARM_HALF_H := 72.0
 
 # ---- config ----
 var charge_key := KEY_SPACE
 var lean_phase := 0.0
-var ground_y := 585.0
+var ground_y := 487.0
 var facing := 1
+var team := 1                # 1 = A (left/faces right), 2 = B (right/faces left)
 var min_x := 70.0
 var max_x := 1210.0
 
-# ---- state ----
+# ---- state (read by main) ----
 var vel := Vector2.ZERO
 var arm_amt := 0.0
+var just_released := false   # true only on the frame the key is released
 var sim_time := 0.0
 var was_charging := false
 
 var body: Node2D
 var arm: Sprite2D
+var hand: Marker2D
 
 func setup(body_path: String, arm_path: String, key: int, phase: float, in_ground_y: float, in_facing: int) -> void:
 	charge_key = key
 	lean_phase = phase
 	ground_y = in_ground_y
 	facing = in_facing
+	team = 1 if in_facing == 1 else 2
 	scale = Vector2(PLAYER_SCALE * facing, PLAYER_SCALE)
 
 	body = Node2D.new()
@@ -71,11 +69,14 @@ func setup(body_path: String, arm_path: String, key: int, phase: float, in_groun
 	arm.z_index = 1
 	shoulder.add_child(arm)
 
-	var hand := Marker2D.new()
+	hand = Marker2D.new()
 	hand.position = Vector2(0, ARM_HALF_H * 2.0)
 	arm.add_child(hand)
 
-func _process(delta: float) -> void:
+func hand_pos() -> Vector2:
+	return hand.global_position
+
+func tick(delta: float) -> void:
 	if body == null:
 		return
 	sim_time += delta
@@ -83,28 +84,25 @@ func _process(delta: float) -> void:
 	body.rotation = MAX_LEAN * sin(sim_time * LEAN_SPEED + lean_phase)
 
 	var charging := Input.is_physical_key_pressed(charge_key)
+	just_released = was_charging and not charging
 	arm_amt = clampf(arm_amt + (1.0 if charging else -1.0) * ARM_RAISE_SPEED * delta, 0.0, 1.0)
 	arm.rotation = deg_to_rad(lerpf(ARM_REST_DEG, ARM_RAISED_DEG, arm_amt))
 
-	# Jump on the rising edge while grounded — along the body's CURRENT (visual) up direction.
 	if charging and not was_charging and is_grounded():
 		var up := body.global_transform.basis_xform(Vector2(0, -1)).normalized()
 		vel = Vector2(up.x * SIDE_FACTOR, up.y) * JUMP_SPEED
 	was_charging = charging
 
-	# Integrate.
 	vel.y += GRAVITY * delta
 	vel.x *= maxf(0.0, 1.0 - AIR_DRAG * delta)
 	position += vel * delta
 
-	# Floor.
 	if position.y >= ground_y:
 		position.y = ground_y
 		if vel.y > 0.0:
 			vel.y = 0.0
 		vel.x *= maxf(0.0, 1.0 - GROUND_FRICTION * delta)
 
-	# Side walls.
 	if position.x < min_x:
 		position.x = min_x
 		vel.x = absf(vel.x) * 0.3
