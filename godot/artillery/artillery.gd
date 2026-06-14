@@ -36,8 +36,8 @@ func _ready() -> void:
 	_add_rect(Vector2.ZERO, Vector2(VIEW.x, GROUND_Y), Color(0.52, 0.62, 0.80), -10)        # sky
 	_add_rect(Vector2(0, GROUND_Y), Vector2(VIEW.x, VIEW.y - GROUND_Y), Color(0.36, 0.27, 0.17), -5)  # ground
 
-	_spawn_tank(220.0, Color(0.30, 0.55, 1.0), 1)
-	_spawn_tank(1060.0, Color(1.0, 0.40, 0.35), -1)
+	_spawn_tank(220.0, 0, 1)      # green tank, faces right
+	_spawn_tank(1060.0, 1, -1)    # orange tank, faces left
 
 	# Trajectory-preview line (world space).
 	guide = Line2D.new()
@@ -58,11 +58,11 @@ func _ready() -> void:
 	hud.add_child(info)
 	_update_info()
 
-func _spawn_tank(x: float, col: Color, facing: int) -> void:
+func _spawn_tank(x: float, variant: int, facing: int) -> void:
 	var t := Tank.new()
 	add_child(t)
 	t.position = Vector2(x, GROUND_Y)
-	t.setup(col, facing)
+	t.setup(variant, facing)
 	tanks.append(t)
 
 func _process(delta: float) -> void:
@@ -175,20 +175,18 @@ func _explode(pos: Vector2) -> void:
 
 func _game_over() -> void:
 	state = "over"
-	var win := "BLUE (P1)" if tanks[1].is_dead() else "RED (P2)"
+	var win := "GREEN (P1)" if tanks[1].is_dead() else "ORANGE (P2)"
 	info.text = "%s WINS!   (press F5 to restart)" % win
 
 # ---- visuals / hud ----
-func _make_proj(w: int) -> Node2D:
+func _make_proj(_w: int) -> Node2D:
 	var n := Node2D.new()
-	var dot := Polygon2D.new()
-	var pts := PackedVector2Array()
-	for i in range(10):
-		var a := TAU * float(i) / 10.0
-		pts.append(Vector2(cos(a), sin(a)) * 7.0)
-	dot.polygon = pts
-	dot.color = PROJ_COLOR[w]
-	n.add_child(dot)
+	var s := Sprite2D.new()
+	s.texture = Tank.SHEET
+	s.region_enabled = true
+	s.region_rect = Tank.PEACH_REGION
+	s.scale = Vector2(0.32, 0.32)
+	n.add_child(s)
 	return n
 
 func _explosion_fx(pos: Vector2, radius: float) -> void:
@@ -224,8 +222,8 @@ func _update_guide(t: Tank) -> void:
 
 func _update_info() -> void:
 	var t: Tank = tanks[active]
-	var who := "BLUE (P1)" if active == 0 else "RED (P2)"
-	info.text = "%s — turn    angle %d°   power %d   fuel %d   weapon: %s\nBLUE HP %d    RED HP %d    A/D move  W/S or stick aim  R/F or arrows power  Q weapon  SPACE fire" % [
+	var who := "GREEN (P1)" if active == 0 else "ORANGE (P2)"
+	info.text = "%s — turn    angle %d°   power %d   fuel %d   weapon: %s\nGREEN HP %d    ORANGE HP %d    A/D move  W/S or stick aim  R/F or arrows power  Q weapon  SPACE fire" % [
 		who, roundi(t.aim_deg), roundi(t.power), roundi(t.fuel), WEAPON_NAMES[t.weapon],
 		roundi(tanks[0].hp), roundi(tanks[1].hp)]
 
