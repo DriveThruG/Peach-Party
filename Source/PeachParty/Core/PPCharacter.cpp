@@ -14,6 +14,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Engine/World.h"
 #include "Engine/GameViewportClient.h"
+#include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
 
 APPCharacter::APPCharacter()
@@ -112,6 +113,7 @@ void APPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &APPCharacter::OnCrouchReleased);
 
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &APPCharacter::OnFirePressed);
+	PlayerInputComponent->BindAction("Fire", IE_Released, this, &APPCharacter::OnFireReleased);
 	PlayerInputComponent->BindAction("Grab", IE_Pressed, this, &APPCharacter::OnGrabPressed);
 
 	// Keyboard fallback for class pick (the WBP_ClassSelect buttons call the same ServerSelectClass).
@@ -244,7 +246,32 @@ void APPCharacter::OnFirePressed()
 	{
 		return;
 	}
-	if (bIsHolding) { ServerThrow(); } else { ServerFire(); } // LMB throws while holding, else shoots
+	if (bIsHolding)
+	{
+		ServerThrow(); // LMB throws while holding an object (single)
+		return;
+	}
+
+	// Hold LMB = autofire: fire once now, then repeat at the class fire interval until released.
+	TryFire();
+	const float Interval = FMath::Max(0.03f, GetEffectiveStats().FireInterval);
+	GetWorldTimerManager().SetTimer(AutoFireTimer, this, &APPCharacter::TryFire, Interval, /*bLoop=*/true);
+}
+
+void APPCharacter::OnFireReleased()
+{
+	GetWorldTimerManager().ClearTimer(AutoFireTimer);
+}
+
+void APPCharacter::TryFire()
+{
+	// Stop autofire if the situation no longer allows it (phase changed / picked up an object).
+	if (!IsFightLive() || bIsHolding)
+	{
+		GetWorldTimerManager().ClearTimer(AutoFireTimer);
+		return;
+	}
+	ServerFire(); // server still rate-gates + spends ammo
 }
 
 void APPCharacter::OnGrabPressed()
@@ -269,9 +296,9 @@ void APPCharacter::ServerFire_Implementation()
 
 	const FPPClassStats St = GetEffectiveStats();
 	const float Now = World->GetTimeSeconds();
-	if (Now - LastFireServerTime < St.FireInterval || CurrentAmmo <= 0)
+	if (Now - LastFireServerTime < St.FireInterval * 0.9f || CurrentAmmo <= 0)
 	{
-		return; // fire-rate gate + ammo (reload only at refill stations)
+		return; // fire-rate gate (0.9 margin so client autofire isn't starved by timing) + ammo
 	}
 	LastFireServerTime = Now;
 	--CurrentAmmo;

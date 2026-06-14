@@ -79,8 +79,12 @@ protected:
 	/** Apply the player's class stats (movement speed, ammo). Called on spawn. */
 	void ApplyClassStats();
 
-	void OnFirePressed();   // LMB: shoot, or throw the held object
-	void OnGrabPressed();   // RMB: grab an object, or drop the held one
+	void OnFirePressed();    // LMB down: throw held object, else START autofire
+	void OnFireReleased();   // LMB up: stop autofire
+	void TryFire();          // one autofire tick (server rate-gates); stops itself if invalid
+	void OnGrabPressed();    // RMB: grab an object, or drop the held one
+
+	FTimerHandle AutoFireTimer;
 
 	UFUNCTION(Server, Reliable)
 	void ServerFire();

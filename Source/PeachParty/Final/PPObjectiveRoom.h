@@ -46,13 +46,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PeachParty|Final")
 	int32 RoomIndex = 1; // 1..3, set per placed instance
 
-	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Final")
-	float CaptureRatePerSec = 0.30f;   // 1 attacker, base: ~3.3s to capture
+	// EditAnywhere so you can tune EACH placed room live in the level Details panel.
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Final")
+	float CaptureRatePerSec = 0.10f;   // 1 attacker, base: ~10s to capture (raise for faster)
 
-	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Final")
-	float DefuseRatePerSec = 0.40f;    // defenders reverse it faster than one attacker fills
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Final")
+	float DefuseRatePerSec = 0.15f;    // defenders reverse it faster than one attacker fills
 
-	UPROPERTY(EditDefaultsOnly, Category = "PeachParty|Final")
+	UPROPERTY(EditAnywhere, Category = "PeachParty|Final")
 	float CaptureRadius = 400.f;
 
 	UPROPERTY(VisibleAnywhere, Category = "PeachParty|Final")
