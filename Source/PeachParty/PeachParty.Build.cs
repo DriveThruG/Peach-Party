@@ -21,9 +21,12 @@ public class PeachParty : ModuleRules
 			"CoreUObject",
 			"Engine",
 			"InputCore",
-			"UMG",                // UUserWidget / CreateWidget / AddToViewport (UMG basket HUD)
+			"Paper2D",            // 2D sprite visuals for the minigames
+			"UMG",                // UUserWidget / CreateWidget / AddToViewport (UMG minigame HUD)
 			"Slate",
-			"SlateCore"
+			"SlateCore",
+			"OnlineSubsystem",    // sessions (host/find/join)
+			"OnlineSubsystemUtils"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]

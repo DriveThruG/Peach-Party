@@ -1,0 +1,190 @@
+#include "Interaction/PPPCStation.h"
+#include "Core/PPPlayerController.h"
+#include "Core/PPPlayerState.h"
+#include "Core/PPGameState.h"
+#include "Core/PPGameMode.h"
+#include "Core/PPTypes.h"
+#include "Camera/CameraComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h" // LoadObject<UStaticMesh>
+#include "UObject/ConstructorHelpers.h"
+#include "Net/UnrealNetwork.h"
+
+APPPCStation::APPPCStation()
+{
+	PrimaryActorTick.bCanEverTick = false;
+	bReplicates = true;
+
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMesh(TEXT("/Engine/BasicShapes/Cube.Cube"));
+
+	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
+	SetRootComponent(SceneRoot);
+
+	// Empty optional slot — assign your OWN model per placed instance (Details panel) and set
+	// bHidePlaceholderBlocks=true if you want to hide the cubes. Default = placeholder desk+screen cubes.
+	StationMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StationMesh"));
+	StationMesh->SetupAttachment(SceneRoot);
+	StationMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	// Desk (a wide low block). Components are siblings under SceneRoot so scales don't cascade.
+	DeskMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DeskMesh"));
+	DeskMesh->SetupAttachment(SceneRoot);
+	DeskMesh->SetRelativeLocation(FVector(0.f, 0.f, 40.f));
+	DeskMesh->SetRelativeScale3D(FVector(1.2f, 1.8f, 0.8f));
+	if (CubeMesh.Succeeded()) { DeskMesh->SetStaticMesh(CubeMesh.Object); }
+
+	// Screen (a thin upright block) — the "filler screen" you look at when seated.
+	ScreenMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ScreenMesh"));
+	ScreenMesh->SetupAttachment(SceneRoot);
+	ScreenMesh->SetRelativeLocation(FVector(0.f, 0.f, 150.f));
+	ScreenMesh->SetRelativeScale3D(FVector(0.12f, 1.4f, 1.0f));
+	ScreenMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	if (CubeMesh.Succeeded()) { ScreenMesh->SetStaticMesh(CubeMesh.Object); }
+
+	// Seat-side camera looking at the screen: this is the player's view while seated.
+	MinigameCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("MinigameCamera"));
+	MinigameCamera->SetupAttachment(SceneRoot);
+	MinigameCamera->SetRelativeLocation(FVector(-70.f, 0.f, 150.f));
+	MinigameCamera->SetRelativeRotation(FRotator(0.f, 0.f, 0.f)); // faces +X toward the screen
+	// Seated view is PERSPECTIVE (you look at your 3D PC). Only the MINIGAMES use the flat ortho camera.
+	MinigameCamera->SetProjectionMode(ECameraProjectionMode::Perspective);
+
+	SeatPoint = CreateDefaultSubobject<USceneComponent>(TEXT("SeatPoint"));
+	SeatPoint->SetupAttachment(SceneRoot);
+	SeatPoint->SetRelativeLocation(FVector(-90.f, 0.f, 0.f));
+}
+
+void APPPCStation::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(APPPCStation, OccupantPlayerState);
+}
+
+void APPPCStation::BeginPlay()
+{
+	Super::BeginPlay();
+	ApplyPlaceholderVisibility();
+}
+
+void APPPCStation::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+	ApplyPlaceholderVisibility();
+}
+
+void APPPCStation::ApplyPlaceholderVisibility()
+{
+	// Only hide the cubes if a real model is actually present — otherwise you'd see NOTHING.
+	const bool bHasModel = (StationMesh && StationMesh->GetStaticMesh() != nullptr);
+	const bool bHide = bHidePlaceholderBlocks && bHasModel;
+	if (DeskMesh)   { DeskMesh->SetVisibility(!bHide); }
+	if (ScreenMesh) { ScreenMesh->SetVisibility(!bHide); }
+}
+
+bool APPPCStation::CanInteract(APPPlayerController* InteractingController) const
+{
+	if (!InteractingController)
+	{
+		return false;
+	}
+
+	// Free seat -> anyone may sit. Occupied -> only the occupant may toggle (stand up).
+	if (!IsOccupied())
+	{
+		return true;
+	}
+	return OccupantPlayerState == InteractingController->PlayerState;
+}
+
+void APPPCStation::ServerInteract(APPPlayerController* InteractingController)
+{
+	if (!HasAuthority() || !InteractingController)
+	{
+		return;
+	}
+
+	// Toggle: interacting with the seat you're already in stands you up.
+	if (OccupantPlayerState == InteractingController->PlayerState)
+	{
+		ServerReleaseOccupant();
+		return;
+	}
+
+	if (IsOccupied())
+	{
+		return; // taken by someone else
+	}
+
+	SeatController(InteractingController);
+}
+
+void APPPCStation::SeatController(APPPlayerController* Controller)
+{
+	APPPlayerState* PS = Controller ? Cast<APPPlayerState>(Controller->PlayerState) : nullptr;
+	if (!PS)
+	{
+		return;
+	}
+
+	OccupantPlayerState = PS;
+	OnRep_Occupant(); // host mirror
+
+	Controller->SetSeatedStation(this);
+
+	// In the Lobby, sitting at a PC means "ready". Other phases use the seat for the minigame.
+	const APPGameState* GS = GetWorld() ? GetWorld()->GetGameState<APPGameState>() : nullptr;
+	if (GS && GS->GetCurrentPhase() == EMatchPhase::Lobby)
+	{
+		PS->SetReady(true);
+
+		if (APPGameMode* GM = GetWorld()->GetAuthGameMode<APPGameMode>())
+		{
+			GM->NotifyReadyStateChanged();
+		}
+	}
+}
+
+void APPPCStation::ServerReleaseOccupant()
+{
+	if (!HasAuthority() || !OccupantPlayerState)
+	{
+		return;
+	}
+
+	APPPlayerState* PS = OccupantPlayerState;
+
+	// Clear the controller's seat (blends its camera back to the pawn => instant return to 3D).
+	if (APPPlayerController* PC = PS->GetOwningController() ? Cast<APPPlayerController>(PS->GetOwningController()) : nullptr)
+	{
+		PC->SetSeatedStation(nullptr);
+	}
+
+	OccupantPlayerState = nullptr;
+	OnRep_Occupant(); // host mirror
+
+	const APPGameState* GS = GetWorld() ? GetWorld()->GetGameState<APPGameState>() : nullptr;
+	if (GS && GS->GetCurrentPhase() == EMatchPhase::Lobby)
+	{
+		PS->SetReady(false);
+
+		if (APPGameMode* GM = GetWorld()->GetAuthGameMode<APPGameMode>())
+		{
+			GM->NotifyReadyStateChanged();
+		}
+	}
+}
+
+void APPPCStation::OnRep_Occupant()
+{
+	BP_OnOccupantChanged(OccupantPlayerState);
+}
+
+void APPPCStation::OnBeginFocus()
+{
+	BP_OnFocusChanged(true);
+}
+
+void APPPCStation::OnEndFocus()
+{
+	BP_OnFocusChanged(false);
+}

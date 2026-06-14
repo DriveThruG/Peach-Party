@@ -1,5 +1,0 @@
-# Godot 4 generates this cache/import folder on open — never commit it.
-.godot/
-
-# Exported builds
-/build/
