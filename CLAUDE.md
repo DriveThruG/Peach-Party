@@ -373,6 +373,15 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-14** — **Debug pass + no-teleport + 10-hits-to-die.** New header-only `Core/PPDebug.h`
+  (`PPDebug::Print` → Output Log + on-screen). Instrumented: class pick / phase / fight start / room
+  ACTIVE / live capture % (keyed per room) / room CAPTURED / match winner / FIRE+ammo / HIT+wetness /
+  DIED / RESPAWN / REFILL / GRAB+THROW. **DEBUG: every hit = fixed 10 wetness → exactly 10 shots kills**
+  any class (`APPCharacter::ApplyWetness`; the shooter's class value is logged but not applied — revert
+  to `Amount` for real balance). Final no longer teleports players to rooms (rooms are spread in the map,
+  players walk); `RespawnNow` destroys the slipped pawn + `RestartPlayer` at the team start. Mouse cursor
+  is freed only when `WBP_ClassSelect` actually loads (else keyboard 1-4 + normal camera). Class pick needs
+  a press in BOTH PIE windows. Tuned: RoomTimeLimit 120s, RespawnDelay 10s, Team A attacks.
 - **2026-06-14** — **Rolled back to UE5 + stripped to FINAL-GAME ONLY** (see top banner). Restored git
   state `ddc35e9` (furthest Final), then deleted `Menu/`, `Minigame/` (Basket+Artillery), `Interaction/
   PPInteractable.h`, `Core/PPPlaceholderBlock.*`. Rewrote all 6 Core classes: new flow `None →

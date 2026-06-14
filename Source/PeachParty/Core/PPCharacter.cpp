@@ -5,6 +5,7 @@
 #include "Core/PPGameMode.h"
 #include "Final/PPWaterProjectile.h"
 #include "Final/PPGrabbableObject.h"
+#include "Core/PPDebug.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -289,6 +290,9 @@ void APPCharacter::ServerFire_Implementation()
 	{
 		Shot->Launch(Dir * St.ProjectileSpeed, PS->GetTeam(), St.WetnessPerHit, this);
 	}
+
+	PPDebug::Print(FString::Printf(TEXT("FIRE  %s (Team %d)  ammo %d/%d"),
+		*PS->GetPlayerName(), (int32)PS->GetTeam(), CurrentAmmo, St.AmmoCapacity), FColor::Cyan, 2.f);
 }
 
 void APPCharacter::ApplyWetness(float Amount, EPPTeam InstigatorTeam)
@@ -302,11 +306,23 @@ void APPCharacter::ApplyWetness(float Amount, EPPTeam InstigatorTeam)
 	{
 		return;
 	}
-	if (PS->AddWetness(Amount)) // returns true when it just hit 100
+
+	// DEBUG: fixed 10 wetness per enemy hit so EVERY player dies after exactly 10 shots, regardless of
+	// class (threshold is 100). The shooter's class value (Amount) is logged but not applied for now.
+	const float DebugWetnessPerHit = 10.f;
+	const bool bDied = PS->AddWetness(DebugWetnessPerHit); // true when it just hit 100
+
+	const int32 Hits = FMath::RoundToInt(PS->GetWetness() / DebugWetnessPerHit);
+	PPDebug::Print(FString::Printf(TEXT("HIT   %s  wetness %.0f/100  (hit %d/10, by Team %d, raw %.0f)"),
+		*PS->GetPlayerName(), PS->GetWetness(), Hits, (int32)InstigatorTeam, Amount), FColor::Yellow, 2.f);
+
+	if (bDied)
 	{
 		// Slip impulse (server-authoritative, replicates via movement).
 		LaunchCharacter(FVector(FMath::FRandRange(-300.f, 300.f), FMath::FRandRange(-300.f, 300.f), 500.f), true, true);
 		MulticastSlip();
+		PPDebug::Print(FString::Printf(TEXT("DIED  %s  (10 hits) -> respawn soon"), *PS->GetPlayerName()),
+			FColor::Red, 4.f);
 		if (APPGameMode* GM = GetWorld()->GetAuthGameMode<APPGameMode>())
 		{
 			GM->ScheduleRespawn(GetController());
@@ -334,7 +350,15 @@ void APPCharacter::AddAmmo(int32 Amount)
 	{
 		return;
 	}
-	CurrentAmmo = FMath::Min(CurrentAmmo + Amount, GetEffectiveStats().AmmoCapacity);
+	const int32 Cap = GetEffectiveStats().AmmoCapacity;
+	const int32 Before = CurrentAmmo;
+	CurrentAmmo = FMath::Min(CurrentAmmo + Amount, Cap);
+	if (CurrentAmmo != Before)
+	{
+		const APPPlayerState* PS = GetPlayerState<APPPlayerState>();
+		PPDebug::Print(FString::Printf(TEXT("REFILL %s  +%d  ammo %d/%d"),
+			PS ? *PS->GetPlayerName() : TEXT("?"), CurrentAmmo - Before, CurrentAmmo, Cap), FColor::Green, 2.f);
+	}
 }
 
 void APPCharacter::ServerGrabOrDrop_Implementation()
@@ -350,6 +374,7 @@ void APPCharacter::ServerGrabOrDrop_Implementation()
 		if (HeldObject) { HeldObject->Drop(); }
 		HeldObject = nullptr;
 		bIsHolding = false;
+		PPDebug::Print(TEXT("DROP  object"), FColor::Orange, 2.f);
 		return;
 	}
 
@@ -368,6 +393,7 @@ void APPCharacter::ServerGrabOrDrop_Implementation()
 				Obj->Grab(this, HoldPoint);
 				HeldObject = Obj;
 				bIsHolding = true;
+				PPDebug::Print(FString::Printf(TEXT("GRAB  %s"), *Obj->GetName()), FColor::Orange, 2.f);
 			}
 		}
 	}
@@ -382,6 +408,7 @@ void APPCharacter::ServerThrow_Implementation()
 	const APPPlayerState* PS = GetPlayerState<APPPlayerState>();
 	const FVector Dir = GetBaseAimRotation().Vector();
 	HeldObject->ThrowWithImpulse(Dir * ThrowImpulse, PS ? PS->GetTeam() : EPPTeam::None);
+	PPDebug::Print(FString::Printf(TEXT("THROW %s"), *HeldObject->GetName()), FColor::Orange, 2.f);
 	HeldObject = nullptr;
 	bIsHolding = false;
 }

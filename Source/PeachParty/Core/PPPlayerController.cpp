@@ -2,6 +2,7 @@
 #include "Core/PPPlayerState.h"
 #include "Core/PPGameState.h"
 #include "Core/PPGameMode.h"
+#include "Core/PPDebug.h"
 #include "Blueprint/UserWidget.h"
 #include "Camera/PlayerCameraManager.h"
 #include "TimerManager.h"
@@ -31,6 +32,8 @@ void APPPlayerController::ServerSelectClass_Implementation(EPPClass NewClass)
 	}
 	if (PS->SetSelectedClass(NewClass))
 	{
+		PPDebug::Print(FString::Printf(TEXT("CLASS  %s picked %d (Team %d)"),
+			*PS->GetPlayerName(), (int32)NewClass, (int32)PS->GetTeam()), FColor::Magenta, 3.f);
 		// A pick during ClassSelect may complete the gate that starts the fight.
 		if (APPGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<APPGameMode>() : nullptr)
 		{

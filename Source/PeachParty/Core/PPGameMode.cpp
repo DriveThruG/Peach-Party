@@ -5,6 +5,7 @@
 #include "Core/PPCharacter.h"
 #include "Core/PPTeamPlayerStart.h"
 #include "Final/PPObjectiveRoom.h"
+#include "Core/PPDebug.h"
 #include "EngineUtils.h" // TActorIterator
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
@@ -166,6 +167,7 @@ void APPGameMode::EnterClassSelect()
 		GS->SetPhase(EMatchPhase::ClassSelect);
 		GS->SetPhaseEndTime(0.f); // untimed: wait for both picks
 	}
+	PPDebug::Print(TEXT("PHASE  ClassSelect — press 1-4 in BOTH windows to pick a class"), FColor::Magenta, 6.f);
 }
 
 bool APPGameMode::AllPlayersChosen() const
@@ -195,6 +197,13 @@ void APPGameMode::NotifyClassChosen()
 	}
 	if (GS->NumPlayers() < MinPlayersToStart || !AllPlayersChosen())
 	{
+		int32 Chosen = 0;
+		for (APlayerState* PS : GS->PlayerArray)
+		{
+			if (const APPPlayerState* P = Cast<APPPlayerState>(PS)) { Chosen += P->HasChosenClass() ? 1 : 0; }
+		}
+		PPDebug::Print(FString::Printf(TEXT("WAITING  %d/%d players ready (need %d)"),
+			Chosen, GS->NumPlayers(), MinPlayersToStart), FColor::Magenta, 3.f);
 		return; // still waiting for the other player / their pick
 	}
 	StartFinalPhase();
@@ -225,15 +234,14 @@ void APPGameMode::StartFinalPhase()
 
 	if (Rooms.Num() == 0)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[PeachParty] Final phase: no APPObjectiveRoom placed in the level — fight cannot start."));
+		PPDebug::Print(TEXT("ERROR  no APPObjectiveRoom placed — fight cannot progress!"), FColor::Red, 10.f);
 		return;
 	}
 
 	CurrentRoomArrayIndex = -1;
-	ActivateRoom(0); // open room 1 (also repositions both teams + starts the timer)
-
-	UE_LOG(LogTemp, Log, TEXT("[PeachParty] Final phase. Attackers = Team %d, %d rooms."),
-		(int32)DefaultAttackingTeam, Rooms.Num());
+	PPDebug::Print(FString::Printf(TEXT("FIGHT START — attackers Team %d, %d rooms, %.0fs/room"),
+		(int32)DefaultAttackingTeam, Rooms.Num(), RoomTimeLimit), FColor::Green, 6.f);
+	ActivateRoom(0); // open room 1 + start the timer
 }
 
 void APPGameMode::ActivateRoom(int32 RoomArrayIndex)
@@ -260,6 +268,8 @@ void APPGameMode::ActivateRoom(int32 RoomArrayIndex)
 	APPObjectiveRoom* Room = Rooms[RoomArrayIndex];
 	Room->SetActive(true);
 	GS->SetActiveRoomIndex(Room->GetRoomIndex());
+	PPDebug::Print(FString::Printf(TEXT("ROOM %d now ACTIVE — attackers go capture it"), Room->GetRoomIndex()),
+		FColor::Green, 5.f);
 
 	// Per-room timer reset (renewed pressure each stage).
 	GS->SetPhaseEndTime(GetWorld()->GetTimeSeconds() + RoomTimeLimit);
@@ -300,7 +310,7 @@ void APPGameMode::EndFinalPhase(EPPTeam WinningTeam)
 		GS->SetPhase(EMatchPhase::PostMatch);
 		GS->SetPhaseEndTime(0.f);
 	}
-	UE_LOG(LogTemp, Log, TEXT("[PeachParty] Final phase over. Winner = Team %d."), (int32)WinningTeam);
+	PPDebug::Print(FString::Printf(TEXT("MATCH OVER — Team %d WINS!"), (int32)WinningTeam), FColor::Green, 20.f);
 }
 
 void APPGameMode::ScheduleRespawn(AController* Controller)
@@ -332,4 +342,7 @@ void APPGameMode::RespawnNow(AController* Controller)
 		Old->Destroy();
 	}
 	RestartPlayer(Controller);
+
+	const APPPlayerState* PS = Controller->GetPlayerState<APPPlayerState>();
+	PPDebug::Print(FString::Printf(TEXT("RESPAWN  %s"), PS ? *PS->GetPlayerName() : TEXT("?")), FColor::Cyan, 3.f);
 }

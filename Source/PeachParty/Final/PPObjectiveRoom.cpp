@@ -2,6 +2,7 @@
 #include "Core/PPGameState.h"
 #include "Core/PPGameMode.h"
 #include "Core/PPPlayerState.h"
+#include "Core/PPDebug.h"
 #include "Components/BoxComponent.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/Controller.h"
@@ -117,12 +118,18 @@ void APPObjectiveRoom::Tick(float DeltaSeconds)
 			bCaptured = true;
 			bIsActive = false;
 			OnRep_Captured(); // host mirror
+			PPDebug::Print(FString::Printf(TEXT("ROOM %d CAPTURED!"), RoomIndex), FColor::Green, 5.f);
 			if (APPGameMode* GM = GetWorld()->GetAuthGameMode<APPGameMode>())
 			{
 				GM->NotifyRoomCaptured(this);
 			}
 		}
 	}
+
+	// Live capture readout (keyed per room -> updates in place instead of spamming).
+	PPDebug::Print(FString::Printf(TEXT("ROOM %d  capture %3.0f%%  (atk %.1f, def %d)"),
+		RoomIndex, CaptureProgress * 100.f, AttackerPower, Defenders),
+		FColor::White, 1.f, /*Key=*/100 + RoomIndex);
 }
 
 void APPObjectiveRoom::OnRep_Captured()
