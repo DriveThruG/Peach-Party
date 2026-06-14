@@ -38,9 +38,7 @@ var proj_vel := Vector2.ZERO
 
 var hud: CanvasLayer
 var info: Label
-var tune_label: Label
 var guide: DashedLine
-var tune_pivot := Tank.TURRET_POS
 
 # Camera (zooms onto the active player; zooms out between turns).
 const ZOOM_IN := Vector2(1.7, 1.7)
@@ -75,14 +73,6 @@ func _ready() -> void:
 	info.position = Vector2(20, 16)
 	info.size = Vector2(VIEW.x - 40, 80)
 	hud.add_child(info)
-
-	tune_label = Label.new()
-	tune_label.add_theme_font_size_override("font_size", 18)
-	tune_label.add_theme_color_override("font_color", Color.WHITE)
-	tune_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	tune_label.add_theme_constant_override("outline_size", 5)
-	tune_label.position = Vector2(20, VIEW.y - 40)
-	hud.add_child(tune_label)
 
 	cam = Camera2D.new()
 	cam.limit_left = 0
@@ -137,7 +127,6 @@ func terrain_angle(x: float) -> float:
 
 func _process(delta: float) -> void:
 	guide.visible = (state == "aim")
-	_tune_barrel(delta)
 	match state:
 		"aim":
 			_aim_phase(delta)
@@ -253,12 +242,11 @@ func _game_over() -> void:
 	state = "over"
 	_zoom_out()
 	info.visible = false
-	tune_label.visible = false
 	guide.visible = false
 	if tanks[0].is_dead():
-		_show_winner("ORANGE", Color(1.0, 0.55, 0.2))
+		_show_winner("TEAM B", Color(1.0, 0.55, 0.2))   # left (green/P1) dead -> right wins
 	else:
-		_show_winner("GREEN", Color(0.5, 0.9, 0.4))
+		_show_winner("TEAM A", Color(0.5, 0.9, 0.4))
 
 func _show_winner(team_name: String, col: Color) -> void:
 	var dim := ColorRect.new()
@@ -285,21 +273,6 @@ func _show_winner(team_name: String, col: Color) -> void:
 	tw.set_parallel(true)
 	tw.tween_property(label, "modulate:a", 1.0, 0.3)
 	tw.tween_property(label, "scale", Vector2.ONE, 0.55).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
-	var sub := Label.new()
-	sub.text = "press F5 to restart"
-	sub.add_theme_font_size_override("font_size", 30)
-	sub.add_theme_color_override("font_color", Color.WHITE)
-	sub.add_theme_color_override("font_outline_color", Color.BLACK)
-	sub.add_theme_constant_override("outline_size", 6)
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.size = Vector2(900, 40)
-	sub.position = Vector2(VIEW.x * 0.5 - 450, VIEW.y * 0.5 + 55)
-	hud.add_child(sub)
-	sub.modulate.a = 0.0
-	var tw2 := create_tween()
-	tw2.tween_interval(0.55)
-	tw2.tween_property(sub, "modulate:a", 1.0, 0.4)
 
 # ---- visuals / hud ----
 func _make_proj(_w: int) -> Node2D:
@@ -342,27 +315,6 @@ func _update_guide(t: Tank) -> void:
 			pts.append(Vector2(pos.x, terrain_y(pos.x)))
 			break
 	guide.set_points(pts)
-
-# Live-tune the barrel mount point on both tanks (J/L = x, I/K = y). Read off the value, tell me, I bake it.
-func _tune_barrel(delta: float) -> void:
-	var step := 30.0 * delta
-	var changed := false
-	if Input.is_physical_key_pressed(KEY_J):
-		tune_pivot.x -= step
-		changed = true
-	if Input.is_physical_key_pressed(KEY_L):
-		tune_pivot.x += step
-		changed = true
-	if Input.is_physical_key_pressed(KEY_I):
-		tune_pivot.y -= step
-		changed = true
-	if Input.is_physical_key_pressed(KEY_K):
-		tune_pivot.y += step
-		changed = true
-	if changed:
-		for t in tanks:
-			t.set_turret_pos(tune_pivot)
-	tune_label.text = "turret tune  J/L x  I/K y   ->   TURRET_POS=(%d, %d)" % [roundi(tune_pivot.x), roundi(tune_pivot.y)]
 
 func _update_info() -> void:
 	var t: Tank = tanks[active]

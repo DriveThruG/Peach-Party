@@ -15,8 +15,9 @@ const TURRET_REGION := [Rect2(336, 84, 188, 148), Rect2(336, 292, 188, 148)]
 const BARREL_REGION := [Rect2(556, 156, 156, 48), Rect2(556, 364, 160, 48)]
 const PEACH_REGION := Rect2(768, 212, 132, 136)
 
-# Turret mount point in world px (post-scale) — where the turret dome + barrel sit in the hull hole.
-const TURRET_POS := Vector2(-1, -40)
+# Turret mount point in world px (post-scale) — the hull hole sits at a slightly different x per facing.
+const TURRET_POS_R := Vector2(-6, -46)   # faces right (green / P1)
+const TURRET_POS_L := Vector2(4, -46)    # faces left  (orange / P2)
 const BAR_W := 82.0
 
 var hp := MAX_HP
@@ -46,15 +47,16 @@ func setup(variant: int, in_facing: int) -> void:
 		hull.flip_h = true
 
 	# Barrel (z=1) mounts at the turret; the turret dome (z=2) sits in the hole and covers the barrel base.
+	var tp: Vector2 = TURRET_POS_R if facing == 1 else TURRET_POS_L
 	barrel = Node2D.new()
-	barrel.position = TURRET_POS
+	barrel.position = tp
 	barrel.z_index = 1
 	add_child(barrel)
 	var br: Rect2 = BARREL_REGION[variant]
 	barrel_len = br.size.x * TANK_SCALE * TURRET_MUL
 	_sprite(br, Vector2(barrel_len * 0.5, 0), barrel, TANK_SCALE * TURRET_MUL)
 
-	turret_sprite = _sprite(TURRET_REGION[variant], TURRET_POS, self, TANK_SCALE * TURRET_MUL)
+	turret_sprite = _sprite(TURRET_REGION[variant], tp, self, TANK_SCALE * TURRET_MUL)
 	turret_sprite.z_index = 2
 	if facing == -1:
 		turret_sprite.flip_h = true
@@ -62,12 +64,6 @@ func setup(variant: int, in_facing: int) -> void:
 	hp_fill = _make_bar(-108.0, Color(0.2, 0.9, 0.3))
 	fuel_fill = _make_bar(-94.0, Color(0.3, 0.7, 1.0))
 	_refresh()
-
-func set_turret_pos(p: Vector2) -> void:
-	if turret_sprite != null:
-		turret_sprite.position = p
-	if barrel != null:
-		barrel.position = p
 
 func muzzle_dir() -> Vector2:
 	# LOCAL aim direction (used to rotate the barrel sprite).
