@@ -35,7 +35,7 @@ var score_label: Label
 
 # Collision: each character is a capsule (segment torso_lo..torso_hi + this radius).
 const PLAYER_RADIUS := 30.0
-const TILT_GAIN := 0.035      # how hard a collision topples the body (bigger = more)
+const TILT_GAIN := 0.02       # how hard a collision topples the body (bigger = more)
 const BOUNCE := 0.3           # player-player restitution
 
 func _ready() -> void:

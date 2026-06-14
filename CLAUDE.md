@@ -385,7 +385,13 @@ Read this file first, then before answering:
   pendulum-JUMP horizontal movement, 4 chars (2/team share a key: SPACE/ENTER), ball grab/hold/steal/throw
   (auto-aim at enemy rim, scaled by arm height), **rim** (side posts bounce, score only through the top),
   floor aligned to hoop bases, held-ball z between body/arm, smooth **GOAL!** popup + score HUD,
-  player-player + ball-player **collision**. Tuned arm rig baked: `SHOULDER=(-34,-241)`, `ARM_PIVOT_Y=59`
+  player-player + ball-player **collision** (capsule, bump+topple wobble), goal→reset. Basket is "done for
+  now". **Minigame 2 — Peach Artillery** scaffold started in `godot/artillery/` (`artillery.gd` + `Tank`
+  class in `tank.gd`, `Artillery.tscn`): turn-based hotseat, A/D move (fuel, no regen), W/S aim, R/F power,
+  Q weapon (Shell/Heavy), SPACE fire; projectile gravity arc; direct/area damage w/ linear falloff +
+  knockback; win = enemy tank dead. Placeholder shapes — user has a sprite SHEET to wire (Godot uses sheets
+  directly via AtlasTexture/region_rect, no splitting needed). Run it via F6 on Artillery.tscn.
+  Tuned arm rig baked: `SHOULDER=(-34,-241)`, `ARM_PIVOT_Y=59`
   (a live arm-tuner was used then removed). Files: `godot/project.godot`, `Main.tscn`, `main.gd` (orchestrator),
   `player.gd`, `ball.gd`, art in `godot/art/*.png`. **Next:** Godot high-level multiplayer (host/join
   127.0.0.1, both straight into the match), then polish (win condition, sounds). UE5 project is legacy.
