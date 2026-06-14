@@ -10,6 +10,8 @@ const GRAVITY := 480.0
 const MOVE_SPEED := 70.0
 const AIM_RATE := 42.0
 const POWER_RATE := 280.0
+const GUIDE_STEPS := 48          # trajectory-preview length (~0.8s of flight)
+const STICK_DEADZONE := 0.35
 
 # Per-weapon stats: [Shell, Heavy].
 const WEAPON_NAMES := ["Shell", "Heavy"]
@@ -28,6 +30,7 @@ var proj_vel := Vector2.ZERO
 
 var hud: CanvasLayer
 var info: Label
+var guide: Line2D
 
 func _ready() -> void:
 	_add_rect(Vector2.ZERO, Vector2(VIEW.x, GROUND_Y), Color(0.52, 0.62, 0.80), -10)        # sky
@@ -35,6 +38,13 @@ func _ready() -> void:
 
 	_spawn_tank(220.0, Color(0.30, 0.55, 1.0), 1)
 	_spawn_tank(1060.0, Color(1.0, 0.40, 0.35), -1)
+
+	# Trajectory-preview line (world space).
+	guide = Line2D.new()
+	guide.width = 4.0
+	guide.default_color = Color(1, 1, 1, 0.5)
+	guide.z_index = 8
+	add_child(guide)
 
 	hud = CanvasLayer.new()
 	add_child(hud)
@@ -56,6 +66,7 @@ func _spawn_tank(x: float, col: Color, facing: int) -> void:
 	tanks.append(t)
 
 func _process(delta: float) -> void:
+	guide.visible = (state == "aim")
 	match state:
 		"aim":
 			_aim_phase(delta)
@@ -70,6 +81,8 @@ func _process(delta: float) -> void:
 
 func _aim_phase(delta: float) -> void:
 	var t: Tank = tanks[active]
+
+	# Move (A/D), costs fuel.
 	var mv := 0.0
 	if Input.is_physical_key_pressed(KEY_A):
 		mv -= 1.0
@@ -78,15 +91,24 @@ func _aim_phase(delta: float) -> void:
 	if mv != 0.0 and t.fuel > 0.0:
 		var dx := mv * MOVE_SPEED * delta
 		t.position.x = clampf(t.position.x + dx, 70.0, VIEW.x - 70.0)
-		t.fuel = maxf(0.0, t.fuel - absf(dx))
+		t.spend_fuel(absf(dx))
+
+	# Aim: keys (W/S) OR the left analog stick (push it where you want to aim).
 	if Input.is_physical_key_pressed(KEY_W):
 		t.aim(AIM_RATE * delta)
 	if Input.is_physical_key_pressed(KEY_S):
 		t.aim(-AIM_RATE * delta)
-	if Input.is_physical_key_pressed(KEY_R):
+	var stick := Vector2(Input.get_joy_axis(0, JOY_AXIS_LEFT_X), Input.get_joy_axis(0, JOY_AXIS_LEFT_Y))
+	if stick.length() > STICK_DEADZONE:
+		t.set_aim_deg(rad_to_deg(atan2(-stick.y, absf(stick.x) + 0.001)))
+
+	# Power: R/F OR the UP/DOWN arrow keys.
+	if Input.is_physical_key_pressed(KEY_R) or Input.is_physical_key_pressed(KEY_UP):
 		t.change_power(POWER_RATE * delta)
-	if Input.is_physical_key_pressed(KEY_F):
+	if Input.is_physical_key_pressed(KEY_F) or Input.is_physical_key_pressed(KEY_DOWN):
 		t.change_power(-POWER_RATE * delta)
+
+	_update_guide(t)
 	_update_info()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -186,10 +208,24 @@ func _explosion_fx(pos: Vector2, radius: float) -> void:
 	tw.tween_property(fx, "modulate:a", 0.0, 0.4)
 	tw.chain().tween_callback(fx.queue_free)
 
+func _update_guide(t: Tank) -> void:
+	var pts := PackedVector2Array()
+	var pos: Vector2 = t.muzzle_pos()
+	var vel: Vector2 = t.muzzle_dir() * t.power
+	var dt := 1.0 / 60.0
+	for i in range(GUIDE_STEPS):
+		pts.append(pos)
+		vel.y += GRAVITY * dt
+		pos += vel * dt
+		if pos.y >= GROUND_Y:
+			pts.append(Vector2(pos.x, GROUND_Y))
+			break
+	guide.points = pts
+
 func _update_info() -> void:
 	var t: Tank = tanks[active]
 	var who := "BLUE (P1)" if active == 0 else "RED (P2)"
-	info.text = "%s — turn    angle %d°   power %d   fuel %d   weapon: %s\nBLUE HP %d    RED HP %d        A/D move  W/S aim  R/F power  Q weapon  SPACE fire" % [
+	info.text = "%s — turn    angle %d°   power %d   fuel %d   weapon: %s\nBLUE HP %d    RED HP %d    A/D move  W/S or stick aim  R/F or arrows power  Q weapon  SPACE fire" % [
 		who, roundi(t.aim_deg), roundi(t.power), roundi(t.fuel), WEAPON_NAMES[t.weapon],
 		roundi(tanks[0].hp), roundi(tanks[1].hp)]
 

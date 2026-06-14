@@ -9,8 +9,8 @@ const BARREL_LEN := 50.0
 const MAX_HP := 100.0
 
 var hp := MAX_HP
-var fuel := 100.0
-var max_fuel := 100.0
+var fuel := 160.0
+var max_fuel := 160.0
 var facing := 1            # +1 = aims/fires right, -1 = left
 var aim_deg := 45.0        # 0..85 above horizontal
 var power := 520.0
@@ -19,6 +19,7 @@ var team_color := Color.WHITE
 
 var barrel: Node2D
 var hp_fill: Polygon2D
+var fuel_fill: Polygon2D
 
 func setup(col: Color, in_facing: int) -> void:
 	team_color = col
@@ -32,13 +33,9 @@ func setup(col: Color, in_facing: int) -> void:
 	add_child(barrel)
 	_add_rect(barrel, Vector2(BARREL_LEN, 9), Vector2(BARREL_LEN * 0.5, 0), Color(0.14, 0.14, 0.16))
 
-	# Health bar (left-anchored: the fill's left edge stays put, it shrinks to the right).
-	_add_rect(self, Vector2(W, 9), Vector2(0, -H - 40), Color(0, 0, 0, 0.6))
-	hp_fill = Polygon2D.new()
-	hp_fill.polygon = PackedVector2Array([Vector2(0, -2.5), Vector2(W - 4, -2.5), Vector2(W - 4, 2.5), Vector2(0, 2.5)])
-	hp_fill.color = Color(0.2, 0.9, 0.3)
-	hp_fill.position = Vector2(-(W - 4) * 0.5, -H - 40)
-	add_child(hp_fill)
+	# Health + fuel bars (left-anchored: the fill's left edge stays put, it shrinks to the right).
+	hp_fill = _make_bar(-H - 46, Color(0.2, 0.9, 0.3))
+	fuel_fill = _make_bar(-H - 32, Color(0.3, 0.7, 1.0))
 
 	_refresh()
 
@@ -53,11 +50,19 @@ func aim(d: float) -> void:
 	aim_deg = clampf(aim_deg + d, 0.0, 85.0)
 	_refresh()
 
+func set_aim_deg(d: float) -> void:
+	aim_deg = clampf(d, 0.0, 85.0)
+	_refresh()
+
 func change_power(d: float) -> void:
 	power = clampf(power + d, 150.0, 950.0)
 
 func take_damage(dmg: float) -> void:
 	hp = maxf(0.0, hp - dmg)
+	_refresh()
+
+func spend_fuel(amt: float) -> void:
+	fuel = maxf(0.0, fuel - amt)
 	_refresh()
 
 func is_dead() -> bool:
@@ -68,6 +73,16 @@ func _refresh() -> void:
 	var frac := clampf(hp / MAX_HP, 0.0, 1.0)
 	hp_fill.scale.x = frac
 	hp_fill.color = Color(0.9, 0.2, 0.2).lerp(Color(0.2, 0.9, 0.3), frac)
+	fuel_fill.scale.x = clampf(fuel / max_fuel, 0.0, 1.0)
+
+func _make_bar(y: float, col: Color) -> Polygon2D:
+	_add_rect(self, Vector2(W, 9), Vector2(0, y), Color(0, 0, 0, 0.6))
+	var fill := Polygon2D.new()
+	fill.polygon = PackedVector2Array([Vector2(0, -2.5), Vector2(W - 4, -2.5), Vector2(W - 4, 2.5), Vector2(0, 2.5)])
+	fill.color = col
+	fill.position = Vector2(-(W - 4) * 0.5, y)
+	add_child(fill)
+	return fill
 
 func _add_rect(parent: Node, sz: Vector2, off: Vector2, col: Color) -> Polygon2D:
 	var poly := Polygon2D.new()
