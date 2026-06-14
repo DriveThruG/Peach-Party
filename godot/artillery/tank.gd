@@ -14,9 +14,8 @@ const TURRET_REGION := [Rect2(336, 84, 188, 148), Rect2(336, 292, 188, 148)]
 const BARREL_REGION := [Rect2(556, 156, 156, 48), Rect2(556, 364, 160, 48)]
 const PEACH_REGION := Rect2(768, 212, 132, 136)
 
-# Placement in world px (post-scale) — tune if the turret/barrel sit wrong.
-const TURRET_Y := -52.0
-const BARREL_PIVOT := Vector2(2, -50)
+# Placement in world px (post-scale) — tune if the barrel sits wrong on the turret.
+const BARREL_PIVOT := Vector2(6, -42)
 const BAR_W := 98.0
 
 var hp := MAX_HP
@@ -37,19 +36,19 @@ func setup(variant: int, in_facing: int) -> void:
 	facing = in_facing
 	team_color = Color(0.45, 0.8, 0.3) if variant == 0 else Color(1.0, 0.55, 0.2)
 
+	# Hull sprite already includes the turret, so we only add the rotating barrel on top.
 	var hr: Rect2 = HULL_REGION[variant]
 	var hull := _sprite(hr, Vector2(0, -hr.size.y * TANK_SCALE * 0.5), self)  # bottom at the feet
-	var turret := _sprite(TURRET_REGION[variant], Vector2(0, TURRET_Y), self)
 	if facing == -1:
 		hull.flip_h = true
-		turret.flip_h = true
 
 	barrel = Node2D.new()
 	barrel.position = BARREL_PIVOT
 	add_child(barrel)
 	var br: Rect2 = BARREL_REGION[variant]
 	barrel_len = br.size.x * TANK_SCALE
-	_sprite(br, Vector2(barrel_len * 0.5, 0), barrel)        # barrel's left (mount) end sits at the pivot
+	var bsprite := _sprite(br, Vector2(barrel_len * 0.5, 0), barrel)   # barrel's mount end sits at the pivot
+	bsprite.z_index = -1                                               # tuck the barrel slightly behind the turret
 
 	hp_fill = _make_bar(-108.0, Color(0.2, 0.9, 0.3))
 	fuel_fill = _make_bar(-94.0, Color(0.3, 0.7, 1.0))
