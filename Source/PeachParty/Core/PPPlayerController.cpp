@@ -58,12 +58,13 @@ void APPPlayerController::UpdateClassSelectHud()
 			if (ClassSelectHud)
 			{
 				ClassSelectHud->AddToViewport(50);
+				// Free the cursor ONLY when a real menu is on screen. With no widget yet, keep normal
+				// gameplay input (mouse turns the camera) and pick a class with the 1-4 keyboard fallback.
+				SetInputMode(FInputModeGameAndUI());
+				bShowMouseCursor = true;
+				bClassSelectInputActive = true;
 			}
 		}
-		// Mouse-driven menu: free the cursor (works even if the WBP asset isn't there yet).
-		SetInputMode(FInputModeGameAndUI());
-		bShowMouseCursor = true;
-		bClassSelectInputActive = true;
 	}
 	else if (!bWantHud && (ClassSelectHud || bClassSelectInputActive))
 	{

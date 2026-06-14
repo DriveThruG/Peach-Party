@@ -68,7 +68,6 @@ protected:
 	void ActivateRoom(int32 RoomArrayIndex);   // opens room, repositions teams, (re)starts the timer
 	void OnRoomTimeLimitReached();              // attackers ran out of time on the current room
 	void EndFinalPhase(EPPTeam WinningTeam);
-	FTransform GetRoleSpawnTransform(const APPPlayerState* PS) const;
 	void RespawnNow(AController* Controller);
 
 	APPGameState* GetPPGameState() const;

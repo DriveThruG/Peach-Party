@@ -7,6 +7,7 @@
 #include "Final/PPObjectiveRoom.h"
 #include "EngineUtils.h" // TActorIterator
 #include "Engine/World.h"
+#include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerStart.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
@@ -264,17 +265,8 @@ void APPGameMode::ActivateRoom(int32 RoomArrayIndex)
 	GS->SetPhaseEndTime(GetWorld()->GetTimeSeconds() + RoomTimeLimit);
 	GetWorldTimerManager().SetTimer(PhaseTimerHandle, this, &APPGameMode::OnRoomTimeLimitReached, RoomTimeLimit, false);
 
-	// Reposition both teams at the new frontline (clean stage transition).
-	for (APlayerState* PS : GS->PlayerArray)
-	{
-		if (APPPlayerState* PPPS = Cast<APPPlayerState>(PS))
-		{
-			if (AController* C = PPPS->GetOwningController())
-			{
-				RespawnNow(C);
-			}
-		}
-	}
+	// No teleport: the rooms are spread through the map and players walk between them. We only switch
+	// which room is contestable here; positions are left alone.
 }
 
 void APPGameMode::NotifyRoomCaptured(APPObjectiveRoom* Room)
@@ -311,18 +303,6 @@ void APPGameMode::EndFinalPhase(EPPTeam WinningTeam)
 	UE_LOG(LogTemp, Log, TEXT("[PeachParty] Final phase over. Winner = Team %d."), (int32)WinningTeam);
 }
 
-FTransform APPGameMode::GetRoleSpawnTransform(const APPPlayerState* PS) const
-{
-	if (PS && Rooms.IsValidIndex(CurrentRoomArrayIndex))
-	{
-		const APPObjectiveRoom* Room = Rooms[CurrentRoomArrayIndex];
-		const APPGameState* GS = GetPPGameState();
-		const bool bAttacker = GS && PS->GetTeam() == GS->GetAttackingTeam();
-		return bAttacker ? Room->GetAttackerSpawn() : Room->GetDefenderSpawn();
-	}
-	return FTransform(FVector(0.f, 0.f, 200.f));
-}
-
 void APPGameMode::ScheduleRespawn(AController* Controller)
 {
 	if (!Controller)
@@ -340,10 +320,16 @@ void APPGameMode::RespawnNow(AController* Controller)
 	{
 		return;
 	}
-	APPPlayerState* PS = Controller->GetPlayerState<APPPlayerState>();
-	if (PS)
+	if (APPPlayerState* PS = Controller->GetPlayerState<APPPlayerState>())
 	{
 		PS->ResetForRespawn();
 	}
-	RestartPlayerAtTransform(Controller, GetRoleSpawnTransform(PS));
+	// Destroy the slipped pawn, then respawn at the player's team start (ChoosePlayerStart) — no teleport
+	// to the room; the player walks back into the fight.
+	if (APawn* Old = Controller->GetPawn())
+	{
+		Controller->UnPossess();
+		Old->Destroy();
+	}
+	RestartPlayer(Controller);
 }
