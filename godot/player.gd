@@ -9,8 +9,8 @@ const JUMP_SPEED := 720.0
 const SIDE_FACTOR := 1.15
 const AIR_DRAG := 0.5
 const GROUND_FRICTION := 7.0
-const MAX_LEAN := 0.26
-const LEAN_SPEED := 2.2
+const MAX_LEAN := 0.32
+const LEAN_SPEED := 2.3
 # Wobble: a bump tips the body (tilt); a spring rights it again. Underdamped = a little wobble back.
 const TILT_STIFFNESS := 90.0
 const TILT_DAMPING := 8.0
@@ -43,6 +43,7 @@ var sim_time := 0.0
 var was_charging := false
 var tilt := 0.0              # extra body rotation from bumps (springs back to 0)
 var tilt_vel := 0.0
+var home := Vector2.ZERO     # spawn position, restored on a goal
 
 var body: Node2D
 var shoulder_node: Node2D
@@ -155,3 +156,11 @@ func is_grounded() -> bool:
 func bump(impulse: Vector2, tilt_impulse: float) -> void:
 	vel += impulse
 	tilt_vel += tilt_impulse
+
+# Restore to the spawn spot (called on a goal).
+func reset_to_home() -> void:
+	position = home
+	vel = Vector2.ZERO
+	tilt = 0.0
+	tilt_vel = 0.0
+	arm_amt = 0.0

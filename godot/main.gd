@@ -35,7 +35,7 @@ var score_label: Label
 
 # Collision: each character is a capsule (segment torso_lo..torso_hi + this radius).
 const PLAYER_RADIUS := 30.0
-const TILT_GAIN := 0.02       # how hard a collision topples the body (bigger = more)
+const TILT_GAIN := 0.035      # how hard a collision topples the body (bigger = more)
 const BOUNCE := 0.3           # player-player restitution
 
 func _ready() -> void:
@@ -179,6 +179,8 @@ func _score(team: int) -> void:
 	_update_score_label()
 	_show_goal()
 	_reset_ball()
+	for p in players:
+		p.reset_to_home()
 
 # ---- HUD ----
 func _update_score_label() -> void:
@@ -301,6 +303,7 @@ func _spawn(pos: Vector2, body_path: String, arm_path: String, key: int, phase: 
 	var p := PlayerScript.new()
 	add_child(p)
 	p.position = pos
+	p.home = pos
 	p.setup(body_path, arm_path, key, phase, ground_y, facing)
 	players.append(p)
 
