@@ -9,16 +9,14 @@ void APPGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(APPGameState, CurrentPhase);
-	DOREPLIFETIME(APPGameState, CurrentMinigameIndex);
 	DOREPLIFETIME(APPGameState, TeamAScore);
 	DOREPLIFETIME(APPGameState, TeamBScore);
 	DOREPLIFETIME(APPGameState, PhaseEndServerTime);
-	DOREPLIFETIME(APPGameState, ActiveMinigames);
 	DOREPLIFETIME(APPGameState, AttackingTeam);
 	DOREPLIFETIME(APPGameState, ActiveRoomIndex);
+	DOREPLIFETIME(APPGameState, MatchWinner);
 	DOREPLIFETIME(APPGameState, TeamAReward);
 	DOREPLIFETIME(APPGameState, TeamBReward);
-	DOREPLIFETIME(APPGameState, LastRoundWinner);
 }
 
 EPPReward APPGameState::GetTeamReward(EPPTeam Team) const
@@ -26,34 +24,6 @@ EPPReward APPGameState::GetTeamReward(EPPTeam Team) const
 	if (Team == EPPTeam::TeamA) return TeamAReward;
 	if (Team == EPPTeam::TeamB) return TeamBReward;
 	return EPPReward::None;
-}
-
-bool APPGameState::IsRewardEligible(EPPTeam Team) const
-{
-	if (Team == EPPTeam::TeamA) return TeamAScore >= TeamBScore; // winner, or both on a draw
-	if (Team == EPPTeam::TeamB) return TeamBScore >= TeamAScore;
-	return false;
-}
-
-void APPGameState::SetTeamReward(EPPTeam Team, EPPReward Reward)
-{
-	if (!HasAuthority()) return;
-	if (Team == EPPTeam::TeamA) TeamAReward = Reward;
-	else if (Team == EPPTeam::TeamB) TeamBReward = Reward;
-}
-
-void APPGameState::SetLastRoundWinner(EPPTeam Team)
-{
-	if (HasAuthority())
-	{
-		LastRoundWinner = Team;
-		OnRep_RoundResult(); // host mirror
-	}
-}
-
-void APPGameState::OnRep_RoundResult()
-{
-	BP_OnRoundResult(LastRoundWinner);
 }
 
 void APPGameState::SetAttackingTeam(EPPTeam Team)
@@ -66,35 +36,16 @@ void APPGameState::SetActiveRoomIndex(int32 Index)
 	if (HasAuthority()) { ActiveRoomIndex = Index; }
 }
 
+void APPGameState::SetMatchWinner(EPPTeam Team)
+{
+	if (HasAuthority()) { MatchWinner = Team; }
+}
+
 int32 APPGameState::GetTeamScore(EPPTeam Team) const
 {
 	if (Team == EPPTeam::TeamA) return TeamAScore;
 	if (Team == EPPTeam::TeamB) return TeamBScore;
 	return 0;
-}
-
-void APPGameState::AddActiveMinigame(APPMinigameBase* Minigame)
-{
-	if (HasAuthority() && Minigame)
-	{
-		ActiveMinigames.AddUnique(Minigame);
-	}
-}
-
-void APPGameState::RemoveActiveMinigame(APPMinigameBase* Minigame)
-{
-	if (HasAuthority())
-	{
-		ActiveMinigames.Remove(Minigame);
-	}
-}
-
-void APPGameState::ClearActiveMinigames()
-{
-	if (HasAuthority())
-	{
-		ActiveMinigames.Reset();
-	}
 }
 
 float APPGameState::GetPhaseTimeRemaining() const
@@ -104,20 +55,6 @@ float APPGameState::GetPhaseTimeRemaining() const
 		return 0.f;
 	}
 	return FMath::Max(0.f, PhaseEndServerTime - GetServerWorldTimeSeconds());
-}
-
-int32 APPGameState::NumReadyPlayers() const
-{
-	int32 Count = 0;
-	for (APlayerState* PS : PlayerArray)
-	{
-		const APPPlayerState* PPPS = Cast<APPPlayerState>(PS);
-		if (PPPS && PPPS->IsReady())
-		{
-			++Count;
-		}
-	}
-	return Count;
 }
 
 int32 APPGameState::NumPlayers() const
@@ -142,14 +79,6 @@ void APPGameState::SetPhase(EMatchPhase NewPhase)
 
 	CurrentPhase = NewPhase;
 	OnRep_Phase(); // authority doesn't auto-fire OnRep; mirror the client path on the host.
-}
-
-void APPGameState::SetCurrentMinigameIndex(int32 Index)
-{
-	if (HasAuthority())
-	{
-		CurrentMinigameIndex = Index;
-	}
 }
 
 void APPGameState::SetPhaseEndTime(float ServerWorldTime)
@@ -181,7 +110,7 @@ void APPGameState::OnRep_Phase()
 {
 	BP_OnPhaseChanged(CurrentPhase); // UMG swaps the on-screen panel per phase
 
-	// Smooth fade on every phase transition (Lobby -> Minigame -> Reward -> Final ...).
+	// Smooth fade on every phase transition.
 	if (UWorld* World = GetWorld())
 	{
 		if (APPPlayerController* PC = Cast<APPPlayerController>(World->GetFirstPlayerController()))

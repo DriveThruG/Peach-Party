@@ -7,6 +7,45 @@
 
 ---
 
+> ## 🎯 SCOPE → FINAL-GAME ONLY — 2026-06-14 (READ FIRST, supersedes §1–§9 below)
+> The project was rolled back from git history to the pre-reset UE5 state (commit `ddc35e9`, the
+> furthest-developed Final game) and then **stripped to ONLY the Final combat game**. The Godot port +
+> Peach Basket + Peach Artillery are gone from the tip (still in git history + the user's manual backup).
+>
+> **DELETED:** `Menu/` (PPGameInstance + PPMenuGameMode — no hosting/menus at all), `Minigame/` (Basket
+> + Artillery, ~25 files), `Interaction/PPInteractable.h`, `Core/PPPlaceholderBlock.*`. **PC stations
+> stay as DECORATION:** `Interaction/PPPCStation` is now a dumb static-mesh prop (no sitting / ready /
+> camera / interaction) — place them in the level for looks.
+>
+> **NEW FLOW (all in `Core/`):** 2 players join (PIE: Number of Players = **2**, Listen Server — no menu)
+> → auto-assigned Team A/B → phase **ClassSelect** (each picks a class) → once BOTH picked → **Final**
+> 3-room frontline fight → a team wins (**PostMatch**). Phases now: `None → ClassSelect → Final →
+> PostMatch` (`EMatchPhase` in `Core/PPTypes.h`; Lobby/Minigame/Reward removed).
+> - **Class pick:** `APPPlayerController::ServerSelectClass(EPPClass)` (BlueprintCallable Server RPC).
+>   The controller auto-shows **`/Game/PeachParty/UI/WBP_ClassSelect`** (user must build it: 4 buttons
+>   → call ServerSelectClass with Sprayer/Punisher/Engineer/Runner) while phase==ClassSelect and the
+>   local player hasn't chosen. **Keyboard fallback keys 1–4** also pick a class (so the flow is testable
+>   before the widget exists). `APPPlayerState::HasChosenClass()` gates the start; `bHasChosenClass` replicated.
+> - **Final fight = UNCHANGED design** (`Final/`): classes (Sprayer/Punisher/Engineer/Runner), water-gun
+>   combat (`PPWaterProjectile`, team-tinted — tint inlined, no more PPVisual), wetness→slip→respawn,
+>   3 sequential `APPObjectiveRoom` (RoomIndex 1/2/3) captured in order, per-room timer, grab/throw
+>   (`PPGrabbableObject`), refill stations (`PPRefillStation`). Rewards kept but **dormant** (no reward
+>   phase → always None; the class/wetness code still reads `GetTeamReward`).
+>
+> **Build deps now:** Core/CoreUObject/Engine/InputCore/**UMG/Slate/SlateCore** only (Paper2D + Online
+> removed from Build.cs AND `.uproject`; OnlineSubsystem config removed from DefaultEngine.ini).
+> **Default map → `/Game/PeachParty/Maps/FinalArena`** (user must CREATE it; Claude can't author `.umap`).
+>
+> **USER MUST DO (content):** (1) create the arena map `FinalArena` with **3 `APPObjectiveRoom`** actors
+> (RoomIndex 1/2/3, each has Attacker/DefenderSpawnPoint + CaptureZone), optional `APPTeamPlayerStart`
+> (blue/red) for the ClassSelect spawns, `APPRefillStation` + `APPGrabbableObject` props, and PC-station
+> props for decoration. (2) build `WBP_ClassSelect` (4 buttons → ServerSelectClass). NEW/deleted `.h`/`.cpp`
+> → **Generate VS project files** before building. **Tunables** (DefaultGame.ini, no rebuild):
+> `DefaultAttackingTeam`, `RoomTimeLimit`, `RespawnDelay`, `MinPlayersToStart`.
+> Sections §1–§9 below are HISTORICAL (full party game) — trust THIS banner.
+
+---
+
 ## 1. What this is
 
 **Peach Party** — a UE5 multiplayer party game. Players spawn in a school hub, sit at PCs to ready up,
@@ -334,6 +373,18 @@ Read this file first, then before answering:
 
 ## 11. Changelog
 
+- **2026-06-14** — **Rolled back to UE5 + stripped to FINAL-GAME ONLY** (see top banner). Restored git
+  state `ddc35e9` (furthest Final), then deleted `Menu/`, `Minigame/` (Basket+Artillery), `Interaction/
+  PPInteractable.h`, `Core/PPPlaceholderBlock.*`. Rewrote all 6 Core classes: new flow `None →
+  ClassSelect → Final → PostMatch` (2 players auto-assigned A/B, pick a class, then the existing 3-room
+  frontline fight; no menus/hosting/lobby/minigames/spectate/PC-seating). `PPPlayerController` =
+  class-pick RPC (`ServerSelectClass`, BlueprintCallable) + auto-shows `WBP_ClassSelect` + keyboard 1–4
+  fallback. `PPPlayerState` = team/class/wetness only (+`bHasChosenClass`). `PPGameState` trimmed
+  (phase/scores/attacker/room/winner; rewards dormant). `PPCharacter` = FP movement + water combat only.
+  `PPPCStation` reduced to a decoration prop. `PPWaterProjectile` tint inlined (no PPVisual). Build.cs +
+  `.uproject` drop Paper2D/Online; DefaultEngine default map → `FinalArena`; DefaultGame tunables reset.
+  Final fight design (classes/water/rooms/refill/grab) unchanged. UNVERIFIED — user compiles next (note:
+  the Final combat code was never compile-verified pre-rollback, so expect some error round-trips).
 - **2026-06-12** — **Live basket tuning** (kill the edit→compile→PIE→close loop): (1) all
   `PPPeachBasketUMGGame` tunables `EditDefaultsOnly`→`EditAnywhere` so the RUNNING actor is editable in the
   PIE Details panel — feel values are read every Tick (instant), layout/start values apply via the new

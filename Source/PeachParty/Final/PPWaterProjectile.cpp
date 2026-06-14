@@ -1,12 +1,36 @@
 #include "Final/PPWaterProjectile.h"
 #include "Core/PPCharacter.h"
 #include "Core/PPPlayerState.h"
-#include "Minigame/PPVisual.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
+
+namespace
+{
+	// Team tint for the water (was PPVisual; inlined so the projectile has no minigame dependency).
+	FLinearColor TeamColor(EPPTeam Team)
+	{
+		switch (Team)
+		{
+		case EPPTeam::TeamA: return FLinearColor(0.10f, 0.35f, 1.00f); // blue
+		case EPPTeam::TeamB: return FLinearColor(1.00f, 0.20f, 0.15f); // red
+		default:             return FLinearColor(0.60f, 0.60f, 0.60f);
+		}
+	}
+
+	void TintMesh(UStaticMeshComponent* Comp, const FLinearColor& Color)
+	{
+		if (!Comp) { return; }
+		if (UMaterialInstanceDynamic* MID = Comp->CreateDynamicMaterialInstance(0))
+		{
+			MID->SetVectorParameterValue(TEXT("Color"), Color);
+			MID->SetVectorParameterValue(TEXT("BaseColor"), Color);
+		}
+	}
+}
 
 APPWaterProjectile::APPWaterProjectile()
 {
@@ -55,7 +79,7 @@ void APPWaterProjectile::Launch(const FVector& Velocity, EPPTeam InInstigatorTea
 
 void APPWaterProjectile::OnRep_Team()
 {
-	PPVisual::Tint(Mesh, PPVisual::TeamColor(InstigatorTeam));
+	TintMesh(Mesh, TeamColor(InstigatorTeam));
 }
 
 void APPWaterProjectile::MulticastImpact_Implementation(FVector Location)

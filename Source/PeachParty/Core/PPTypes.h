@@ -6,19 +6,19 @@
 /**
  * High-level match flow. Owned + advanced by APPGameMode (server),
  * replicated to all clients via APPGameState::CurrentPhase.
+ *
+ * Final-only build: 2 players join -> pick a class -> the frontline fight runs -> a winner.
  */
 UENUM(BlueprintType)
 enum class EMatchPhase : uint8
 {
 	None		UMETA(DisplayName = "None"),
-	Lobby		UMETA(DisplayName = "Lobby"),		// players in hub, sit at PCs to ready up
-	Minigame	UMETA(DisplayName = "Minigame"),	// 2D minigame at the PC screens
-	Reward		UMETA(DisplayName = "Reward"),		// team advantages handed out
-	Final		UMETA(DisplayName = "Final"),		// first-person combat phase
-	PostMatch	UMETA(DisplayName = "PostMatch")
+	ClassSelect	UMETA(DisplayName = "ClassSelect"),	// both players pick a class before the fight
+	Final		UMETA(DisplayName = "Final"),		// first-person frontline combat
+	PostMatch	UMETA(DisplayName = "PostMatch")	// a team has won
 };
 
-/** Two balanced teams. EPPTeam::None means "not yet assigned". */
+/** Two teams. EPPTeam::None means "not yet assigned". */
 UENUM(BlueprintType)
 enum class EPPTeam : uint8
 {

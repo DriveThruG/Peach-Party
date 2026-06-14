@@ -5,7 +5,6 @@
 #include "Core/PPGameMode.h"
 #include "Final/PPWaterProjectile.h"
 #include "Final/PPGrabbableObject.h"
-#include "Interaction/PPInteractable.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -13,12 +12,12 @@
 #include "Components/StaticMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Engine/World.h"
-#include "Engine/GameViewportClient.h" // RemoveAllViewportWidgets (clear leftover menu UI on lobby entry)
+#include "Engine/GameViewportClient.h"
 #include "Net/UnrealNetwork.h"
 
 APPCharacter::APPCharacter()
 {
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 
 	// First-person: the body turns with the controller's yaw; no orient-to-movement.
 	bUseControllerRotationYaw = true;
@@ -41,8 +40,6 @@ APPCharacter::APPCharacter()
 	BodyMesh->SetupAttachment(GetCapsuleComponent());
 	BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // the capsule handles collision
 	BodyMesh->SetOwnerNoSee(true);
-	// Cylinder pivot is its CENTER; scaled height is 176 (1.76 * 100). Origin at the capsule CENTRE (0)
-	// makes it span -88..+88 = exactly the capsule, so the base sits on the floor (was -88 -> sank 88u).
 	BodyMesh->SetRelativeLocation(FVector(0.f, 0.f, 0.f));
 	BodyMesh->SetRelativeScale3D(FVector(0.9f, 0.9f, 1.76f));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylMesh(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
@@ -82,14 +79,11 @@ void APPCharacter::PawnClientRestart()
 {
 	Super::PawnClientRestart();
 
-	// Called on the OWNING client when this pawn is set up. The main menu uses APPMenuGameMode (no pawn),
-	// so this only runs in the lobby/game -> safe place to undo the menu's "UI Only + cursor" mode.
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
 		if (PC->IsLocalController())
 		{
-			// Viewport widgets survive level travel (they belong to the LocalPlayer). Clear leftover menu
-			// widgets so they don't sit on top of the lobby (looks like "back at the start screen").
+			// Clear leftover viewport widgets (e.g. the class menu once the fight starts).
 			if (UGameViewportClient* VP = GetWorld() ? GetWorld()->GetGameViewport() : nullptr)
 			{
 				VP->RemoveAllViewportWidgets();
@@ -97,17 +91,6 @@ void APPCharacter::PawnClientRestart()
 			PC->SetInputMode(FInputModeGameOnly());
 			PC->bShowMouseCursor = false;
 		}
-	}
-}
-
-void APPCharacter::Tick(float DeltaSeconds)
-{
-	Super::Tick(DeltaSeconds);
-
-	// Only the controlling client needs to discover what it's looking at.
-	if (IsLocallyControlled())
-	{
-		UpdateFocus();
 	}
 }
 
@@ -121,7 +104,6 @@ void APPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAxis("Turn", this, &APPCharacter::TurnYaw);
 	PlayerInputComponent->BindAxis("LookUp", this, &APPCharacter::LookPitch);
 
-	// Movement actions.
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &APPCharacter::OnJumpPressed);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &APPCharacter::OnJumpReleased);
 	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &APPCharacter::ToggleSprint);
@@ -130,27 +112,31 @@ void APPCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &APPCharacter::OnFirePressed);
 	PlayerInputComponent->BindAction("Grab", IE_Pressed, this, &APPCharacter::OnGrabPressed);
-	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &APPCharacter::OnInteractPressed);
-	PlayerInputComponent->BindAction("SpectateNext", IE_Pressed, this, &APPCharacter::OnSpectateNext);
-	PlayerInputComponent->BindAction("SpectatePrev", IE_Pressed, this, &APPCharacter::OnSpectatePrev);
 
-	// Minigame controls — forwarded to the active match (no-op in the hub).
-	PlayerInputComponent->BindAction("MGPrimary", IE_Pressed, this, &APPCharacter::OnMG_PrimaryPressed);
-	PlayerInputComponent->BindAction("MGPrimary", IE_Released, this, &APPCharacter::OnMG_PrimaryReleased);
-	PlayerInputComponent->BindAction("MGLeft", IE_Pressed, this, &APPCharacter::OnMG_Left);
-	PlayerInputComponent->BindAction("MGRight", IE_Pressed, this, &APPCharacter::OnMG_Right);
-	PlayerInputComponent->BindAction("MGUp", IE_Pressed, this, &APPCharacter::OnMG_Up);
-	PlayerInputComponent->BindAction("MGDown", IE_Pressed, this, &APPCharacter::OnMG_Down);
-	PlayerInputComponent->BindAction("MGPowerUp", IE_Pressed, this, &APPCharacter::OnMG_PowerUp);
-	PlayerInputComponent->BindAction("MGPowerDown", IE_Pressed, this, &APPCharacter::OnMG_PowerDown);
-	PlayerInputComponent->BindAction("MGWeapon", IE_Pressed, this, &APPCharacter::OnMG_Weapon);
+	// Keyboard fallback for class pick (the WBP_ClassSelect buttons call the same ServerSelectClass).
+	PlayerInputComponent->BindAction("Class1", IE_Pressed, this, &APPCharacter::OnSelectClass1);
+	PlayerInputComponent->BindAction("Class2", IE_Pressed, this, &APPCharacter::OnSelectClass2);
+	PlayerInputComponent->BindAction("Class3", IE_Pressed, this, &APPCharacter::OnSelectClass3);
+	PlayerInputComponent->BindAction("Class4", IE_Pressed, this, &APPCharacter::OnSelectClass4);
+}
+
+void APPCharacter::OnSelectClass1() { SelectClass(EPPClass::Sprayer); }
+void APPCharacter::OnSelectClass2() { SelectClass(EPPClass::Punisher); }
+void APPCharacter::OnSelectClass3() { SelectClass(EPPClass::Engineer); }
+void APPCharacter::OnSelectClass4() { SelectClass(EPPClass::Runner); }
+
+void APPCharacter::SelectClass(EPPClass NewClass)
+{
+	if (APPPlayerController* PC = Cast<APPPlayerController>(GetController()))
+	{
+		PC->ServerSelectClass(NewClass);
+	}
 }
 
 // ---------------------------------------------------------------- movement ----
 
 void APPCharacter::MoveForward(float Value)
 {
-	if (IsInMinigame()) { return; } // hub pawn is parked while playing a minigame
 	if (Controller && Value != 0.f)
 	{
 		const FRotator YawRot(0.f, Controller->GetControlRotation().Yaw, 0.f);
@@ -160,7 +146,6 @@ void APPCharacter::MoveForward(float Value)
 
 void APPCharacter::MoveRight(float Value)
 {
-	if (IsInMinigame()) { return; }
 	if (Controller && Value != 0.f)
 	{
 		const FRotator YawRot(0.f, Controller->GetControlRotation().Yaw, 0.f);
@@ -180,8 +165,7 @@ void APPCharacter::LookPitch(float Value)
 
 void APPCharacter::OnJumpPressed()
 {
-	if (IsInMinigame()) { return; } // Space is the minigame action while playing
-	Jump();                          // ACharacter::Jump — networked via CharacterMovement
+	Jump(); // ACharacter::Jump — networked via CharacterMovement
 }
 
 void APPCharacter::OnJumpReleased()
@@ -191,7 +175,6 @@ void APPCharacter::OnJumpReleased()
 
 void APPCharacter::ToggleSprint()
 {
-	if (IsInMinigame()) { return; }
 	bIsSprinting = !bIsSprinting;
 	ApplyMovementSpeed();          // responsive on the owning client
 	ServerSetSprint(bIsSprinting); // authoritative on the server
@@ -210,8 +193,7 @@ void APPCharacter::ApplyMovementSpeed()
 
 void APPCharacter::OnCrouchPressed()
 {
-	if (IsInMinigame()) { return; }
-	Crouch();   // ACharacter::Crouch — networked
+	Crouch(); // ACharacter::Crouch — networked
 }
 
 void APPCharacter::OnCrouchReleased()
@@ -219,73 +201,13 @@ void APPCharacter::OnCrouchReleased()
 	UnCrouch();
 }
 
-// ------------------------------------------------------------- interaction ----
-
-void APPCharacter::UpdateFocus()
-{
-	const APlayerController* PC = Cast<APlayerController>(GetController());
-	if (!PC)
-	{
-		return;
-	}
-
-	FVector CamLoc;
-	FRotator CamRot;
-	PC->GetPlayerViewPoint(CamLoc, CamRot);
-
-	const FVector Start = CamLoc;
-	const FVector End = Start + CamRot.Vector() * InteractTraceDistance;
-
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(this);
-
-	FHitResult Hit;
-	const bool bHit = GetWorld()->SweepSingleByChannel(
-		Hit, Start, End, FQuat::Identity, ECC_Visibility,
-		FCollisionShape::MakeSphere(InteractTraceRadius), Params);
-
-	AActor* NewFocus = nullptr;
-	if (bHit && Hit.GetActor() && Cast<IPPInteractable>(Hit.GetActor()))
-	{
-		NewFocus = Hit.GetActor();
-	}
-
-	if (FocusedActor.Get() != NewFocus)
-	{
-		if (IPPInteractable* Old = Cast<IPPInteractable>(FocusedActor.Get()))
-		{
-			Old->OnEndFocus();
-		}
-		if (IPPInteractable* New = Cast<IPPInteractable>(NewFocus))
-		{
-			New->OnBeginFocus();
-		}
-		FocusedActor = NewFocus;
-	}
-}
-
-void APPCharacter::OnInteractPressed()
-{
-	APPPlayerController* PC = Cast<APPPlayerController>(GetController());
-	if (!PC)
-	{
-		return;
-	}
-
-	// Already seated? One key to stand up and snap back to the 3D world.
-	if (PC->IsSeated())
-	{
-		PC->ServerLeaveStation();
-		return;
-	}
-
-	if (AActor* Target = FocusedActor.Get())
-	{
-		PC->ServerRequestInteract(Target);
-	}
-}
-
 // --------------------------------------------------------- final combat ----
+
+bool APPCharacter::IsFightLive() const
+{
+	const APPGameState* GS = GetWorld() ? GetWorld()->GetGameState<APPGameState>() : nullptr;
+	return GS && GS->GetCurrentPhase() == EMatchPhase::Final;
+}
 
 FPPClassStats APPCharacter::GetEffectiveStats() const
 {
@@ -309,7 +231,7 @@ FPPClassStats APPCharacter::GetEffectiveStats() const
 void APPCharacter::ApplyClassStats()
 {
 	const FPPClassStats St = GetEffectiveStats();
-	WalkSpeed = St.MoveSpeed;          // class (+reward) sets base walk speed...
+	WalkSpeed = St.MoveSpeed;           // class (+reward) sets base walk speed...
 	SprintSpeed = St.MoveSpeed * 1.25f; // ...sprint scales from it
 	ApplyMovementSpeed();
 	CurrentAmmo = St.AmmoCapacity;
@@ -317,9 +239,7 @@ void APPCharacter::ApplyClassStats()
 
 void APPCharacter::OnFirePressed()
 {
-	// Combat (gun + objects) exists ONLY in the final phase.
-	const APPGameState* GS = GetWorld() ? GetWorld()->GetGameState<APPGameState>() : nullptr;
-	if (IsInMinigame() || !GS || GS->GetCurrentPhase() != EMatchPhase::Final)
+	if (!IsFightLive())
 	{
 		return;
 	}
@@ -328,8 +248,7 @@ void APPCharacter::OnFirePressed()
 
 void APPCharacter::OnGrabPressed()
 {
-	const APPGameState* GS = GetWorld() ? GetWorld()->GetGameState<APPGameState>() : nullptr;
-	if (IsInMinigame() || !GS || GS->GetCurrentPhase() != EMatchPhase::Final)
+	if (!IsFightLive())
 	{
 		return;
 	}
@@ -342,16 +261,16 @@ void APPCharacter::ServerFire_Implementation()
 	UWorld* World = GetWorld();
 	const APPGameState* GS = World ? World->GetGameState<APPGameState>() : nullptr;
 	if (!PS || PS->IsSlipping() || bIsHolding || !World || !WaterProjectileClass
-		|| !GS || GS->GetCurrentPhase() != EMatchPhase::Final) // can't shoot while holding an object
+		|| !GS || GS->GetCurrentPhase() != EMatchPhase::Final)
 	{
 		return;
 	}
 
-	const FPPClassStats St = GetEffectiveStats(); // class + team reward
+	const FPPClassStats St = GetEffectiveStats();
 	const float Now = World->GetTimeSeconds();
 	if (Now - LastFireServerTime < St.FireInterval || CurrentAmmo <= 0)
 	{
-		return; // fire-rate gate + ammo (reload only at refill stations — handled elsewhere)
+		return; // fire-rate gate + ammo (reload only at refill stations)
 	}
 	LastFireServerTime = Now;
 	--CurrentAmmo;
@@ -397,8 +316,7 @@ void APPCharacter::ApplyWetness(float Amount, EPPTeam InstigatorTeam)
 
 void APPCharacter::MulticastSlip_Implementation()
 {
-	// Lock movement + input; the fresh pawn after respawn restores both. (A real ragdoll needs a
-	// skeletal mesh + physics asset — drive that from BP_OnSlip once a character mesh exists.)
+	// Lock movement + input; the fresh pawn after respawn restores both.
 	if (GetCharacterMovement())
 	{
 		GetCharacterMovement()->DisableMovement();
@@ -467,49 +385,3 @@ void APPCharacter::ServerThrow_Implementation()
 	HeldObject = nullptr;
 	bIsHolding = false;
 }
-
-void APPCharacter::OnSpectateNext()
-{
-	if (APPPlayerController* PC = Cast<APPPlayerController>(GetController()))
-	{
-		PC->ServerCycleSpectate(+1);
-	}
-}
-
-void APPCharacter::OnSpectatePrev()
-{
-	if (APPPlayerController* PC = Cast<APPPlayerController>(GetController()))
-	{
-		PC->ServerCycleSpectate(-1);
-	}
-}
-
-// --------------------------------------------------------- minigame input ----
-
-bool APPCharacter::IsInMinigame() const
-{
-	const APPPlayerState* PS = GetPlayerState<APPPlayerState>();
-	return PS && PS->GetCurrentMinigame() != nullptr;
-}
-
-void APPCharacter::ForwardMinigameInput(FName Action, bool bPressed)
-{
-	if (!IsInMinigame())
-	{
-		return;
-	}
-	if (APPPlayerController* PC = Cast<APPPlayerController>(GetController()))
-	{
-		PC->ServerMinigameInput(Action, bPressed);
-	}
-}
-
-void APPCharacter::OnMG_PrimaryPressed()  { ForwardMinigameInput(TEXT("Primary"), true); }
-void APPCharacter::OnMG_PrimaryReleased() { ForwardMinigameInput(TEXT("Primary"), false); }
-void APPCharacter::OnMG_Left()            { ForwardMinigameInput(TEXT("Left"), true); }
-void APPCharacter::OnMG_Right()           { ForwardMinigameInput(TEXT("Right"), true); }
-void APPCharacter::OnMG_Up()              { ForwardMinigameInput(TEXT("Up"), true); }
-void APPCharacter::OnMG_Down()            { ForwardMinigameInput(TEXT("Down"), true); }
-void APPCharacter::OnMG_PowerUp()         { ForwardMinigameInput(TEXT("Power+"), true); }
-void APPCharacter::OnMG_PowerDown()       { ForwardMinigameInput(TEXT("Power-"), true); }
-void APPCharacter::OnMG_Weapon()          { ForwardMinigameInput(TEXT("Weapon"), true); }

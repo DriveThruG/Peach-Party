@@ -13,23 +13,34 @@ void APPPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(APPPlayerState, Team);
-	DOREPLIFETIME(APPPlayerState, bIsReady);
-	DOREPLIFETIME(APPPlayerState, MatchScore);
-	DOREPLIFETIME(APPPlayerState, CurrentMinigame);
 	DOREPLIFETIME(APPPlayerState, SelectedClass);
+	DOREPLIFETIME(APPPlayerState, bHasChosenClass);
 	DOREPLIFETIME(APPPlayerState, Wetness);
 	DOREPLIFETIME(APPPlayerState, bIsSlipping);
 }
 
-void APPPlayerState::SetSelectedClass(EPPClass NewClass)
+bool APPPlayerState::SetSelectedClass(EPPClass NewClass)
 {
-	// Only the server, and only while down/respawning — prevents mid-life stat swapping.
-	if (!HasAuthority() || !bIsSlipping || SelectedClass == NewClass)
+	if (!HasAuthority())
 	{
-		return;
+		return false;
 	}
+
+	// Allowed only while choosing (pre-fight) or while down/respawning — never mid-life.
+	const APPGameState* GS = GetWorld() ? GetWorld()->GetGameState<APPGameState>() : nullptr;
+	const bool bSelecting = GS && GS->GetCurrentPhase() == EMatchPhase::ClassSelect;
+	if (!bSelecting && !bIsSlipping)
+	{
+		return false;
+	}
+
 	SelectedClass = NewClass;
+	if (bSelecting)
+	{
+		bHasChosenClass = true; // confirms the pick + closes the menu (replicated)
+	}
 	OnRep_Class();
+	return true;
 }
 
 bool APPPlayerState::AddWetness(float Amount)
@@ -38,7 +49,7 @@ bool APPPlayerState::AddWetness(float Amount)
 	{
 		return false;
 	}
-	// +10% wetness capacity reward raises the slip threshold (100 -> 110).
+	// +10% wetness capacity reward raises the slip threshold (100 -> 110); None = flat 100.
 	float Threshold = 100.f;
 	const APPGameState* GS = GetWorld() ? GetWorld()->GetGameState<APPGameState>() : nullptr;
 	if (GS && GS->GetTeamReward(Team) == EPPReward::Health)
@@ -49,7 +60,7 @@ bool APPPlayerState::AddWetness(float Amount)
 	OnRep_Wetness();
 	if (Wetness >= Threshold)
 	{
-		bIsSlipping = true; // caller (character/gamemode) reacts: ragdoll + schedule respawn
+		bIsSlipping = true; // caller (character/gamemode) reacts: slip + schedule respawn
 		return true;
 	}
 	return false;
@@ -76,14 +87,6 @@ void APPPlayerState::OnRep_Wetness()
 	BP_OnWetnessChanged(Wetness);
 }
 
-void APPPlayerState::SetCurrentMinigame(APPMinigameBase* Minigame)
-{
-	if (HasAuthority())
-	{
-		CurrentMinigame = Minigame;
-	}
-}
-
 void APPPlayerState::SetTeam(EPPTeam NewTeam)
 {
 	if (!HasAuthority() || Team == NewTeam)
@@ -95,33 +98,7 @@ void APPPlayerState::SetTeam(EPPTeam NewTeam)
 	OnRep_Team(); // server-side: OnRep doesn't auto-fire on the authority, so call it manually.
 }
 
-void APPPlayerState::SetReady(bool bNewReady)
-{
-	if (!HasAuthority() || bIsReady == bNewReady)
-	{
-		return;
-	}
-
-	bIsReady = bNewReady;
-	OnRep_Ready();
-}
-
-void APPPlayerState::AddMatchScore(int32 Delta)
-{
-	if (!HasAuthority())
-	{
-		return;
-	}
-
-	MatchScore += Delta;
-}
-
 void APPPlayerState::OnRep_Team()
 {
 	BP_OnTeamChanged(Team);
-}
-
-void APPPlayerState::OnRep_Ready()
-{
-	BP_OnReadyChanged(bIsReady);
 }
