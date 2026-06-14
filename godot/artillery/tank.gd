@@ -54,6 +54,10 @@ func setup(variant: int, in_facing: int) -> void:
 	fuel_fill = _make_bar(-94.0, Color(0.3, 0.7, 1.0))
 	_refresh()
 
+func set_barrel_pivot(p: Vector2) -> void:
+	if barrel != null:
+		barrel.position = p
+
 func muzzle_dir() -> Vector2:
 	var a := deg_to_rad(aim_deg)
 	return Vector2(cos(a) * facing, -sin(a))

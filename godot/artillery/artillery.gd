@@ -5,7 +5,7 @@ extends Node2D
 # Controls (active player only):  A/D move (costs fuel)   W/S aim   R/F power   Q weapon   SPACE fire
 
 const VIEW := Vector2(1280, 720)
-const GROUND_Y := 600.0
+const GROUND_Y := 575.0          # on the background's sand; tune to match the art
 const GRAVITY := 480.0
 const MOVE_SPEED := 70.0
 const AIM_RATE := 42.0
@@ -30,19 +30,24 @@ var proj_vel := Vector2.ZERO
 
 var hud: CanvasLayer
 var info: Label
-var guide: Line2D
+var tune_label: Label
+var guide: DashedLine
+var tune_pivot := Tank.BARREL_PIVOT
 
 func _ready() -> void:
-	_add_rect(Vector2.ZERO, Vector2(VIEW.x, GROUND_Y), Color(0.52, 0.62, 0.80), -10)        # sky
-	_add_rect(Vector2(0, GROUND_Y), Vector2(VIEW.x, VIEW.y - GROUND_Y), Color(0.36, 0.27, 0.17), -5)  # ground
+	var bg := Sprite2D.new()
+	bg.texture = load("res://artillery/art/Background.png")
+	bg.centered = true
+	bg.position = VIEW * 0.5
+	var ts := bg.texture.get_size()
+	bg.scale = Vector2(VIEW.x / ts.x, VIEW.y / ts.y)
+	bg.z_index = -20
+	add_child(bg)
 
 	_spawn_tank(220.0, 0, 1)      # green tank, faces right
 	_spawn_tank(1060.0, 1, -1)    # orange tank, faces left
 
-	# Trajectory-preview line (world space).
-	guide = Line2D.new()
-	guide.width = 4.0
-	guide.default_color = Color(1, 1, 1, 0.5)
+	guide = DashedLine.new()
 	guide.z_index = 8
 	add_child(guide)
 
@@ -56,6 +61,15 @@ func _ready() -> void:
 	info.position = Vector2(20, 16)
 	info.size = Vector2(VIEW.x - 40, 80)
 	hud.add_child(info)
+
+	tune_label = Label.new()
+	tune_label.add_theme_font_size_override("font_size", 18)
+	tune_label.add_theme_color_override("font_color", Color.WHITE)
+	tune_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	tune_label.add_theme_constant_override("outline_size", 5)
+	tune_label.position = Vector2(20, VIEW.y - 40)
+	hud.add_child(tune_label)
+
 	_update_info()
 
 func _spawn_tank(x: float, variant: int, facing: int) -> void:
@@ -67,6 +81,7 @@ func _spawn_tank(x: float, variant: int, facing: int) -> void:
 
 func _process(delta: float) -> void:
 	guide.visible = (state == "aim")
+	_tune_barrel(delta)
 	match state:
 		"aim":
 			_aim_phase(delta)
@@ -185,7 +200,7 @@ func _make_proj(_w: int) -> Node2D:
 	s.texture = Tank.SHEET
 	s.region_enabled = true
 	s.region_rect = Tank.PEACH_REGION
-	s.scale = Vector2(0.32, 0.32)
+	s.scale = Vector2(0.15, 0.15)
 	n.add_child(s)
 	return n
 
@@ -218,7 +233,28 @@ func _update_guide(t: Tank) -> void:
 		if pos.y >= GROUND_Y:
 			pts.append(Vector2(pos.x, GROUND_Y))
 			break
-	guide.points = pts
+	guide.set_points(pts)
+
+# Live-tune the barrel mount point on both tanks (J/L = x, I/K = y). Read off the value, tell me, I bake it.
+func _tune_barrel(delta: float) -> void:
+	var step := 30.0 * delta
+	var changed := false
+	if Input.is_physical_key_pressed(KEY_J):
+		tune_pivot.x -= step
+		changed = true
+	if Input.is_physical_key_pressed(KEY_L):
+		tune_pivot.x += step
+		changed = true
+	if Input.is_physical_key_pressed(KEY_I):
+		tune_pivot.y -= step
+		changed = true
+	if Input.is_physical_key_pressed(KEY_K):
+		tune_pivot.y += step
+		changed = true
+	if changed:
+		for t in tanks:
+			t.set_barrel_pivot(tune_pivot)
+	tune_label.text = "barrel tune  J/L x  I/K y   ->   BARREL_PIVOT=(%d, %d)" % [roundi(tune_pivot.x), roundi(tune_pivot.y)]
 
 func _update_info() -> void:
 	var t: Tank = tanks[active]
