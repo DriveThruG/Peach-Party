@@ -84,6 +84,7 @@ func _spawn_tank(x: float, variant: int, facing: int) -> void:
 	var t := Tank.new()
 	add_child(t)
 	t.position = Vector2(x, terrain_y(x))
+	t.rotation = terrain_angle(x)
 	t.setup(variant, facing)
 	tanks.append(t)
 
@@ -95,6 +96,10 @@ func terrain_y(x: float) -> float:
 	if i >= TERRAIN.size() - 1:
 		return TERRAIN[TERRAIN.size() - 1].y
 	return lerpf(TERRAIN[i].y, TERRAIN[i + 1].y, fx - float(i))
+
+# Slope angle of the ground at world x — used to tilt the tank so it sits on the hill.
+func terrain_angle(x: float) -> float:
+	return atan2(terrain_y(x + 12.0) - terrain_y(x - 12.0), 24.0)
 
 func _process(delta: float) -> void:
 	guide.visible = (state == "aim")
@@ -124,6 +129,7 @@ func _aim_phase(delta: float) -> void:
 		var dx := mv * MOVE_SPEED * delta
 		t.position.x = clampf(t.position.x + dx, 70.0, VIEW.x - 70.0)
 		t.position.y = terrain_y(t.position.x)      # follow the wavy ground
+		t.rotation = terrain_angle(t.position.x)    # tilt to the slope
 		t.spend_fuel(absf(dx))
 
 	# Aim: keys (W/S) OR the left analog stick (push it where you want to aim).
@@ -160,7 +166,7 @@ func _fire() -> void:
 	proj = _make_proj(t.weapon)
 	add_child(proj)
 	proj.position = t.muzzle_pos()
-	proj_vel = t.muzzle_dir() * t.power
+	proj_vel = t.muzzle_world_dir() * t.power
 	state = "flying"
 	_update_info()
 
@@ -193,6 +199,7 @@ func _explode(pos: Vector2) -> void:
 				dir = Vector2(0, -1)
 			t.position.x = clampf(t.position.x + dir.normalized().x * KNOCKBACK[w] * k, 70.0, VIEW.x - 70.0)
 			t.position.y = terrain_y(t.position.x)
+			t.rotation = terrain_angle(t.position.x)
 	_explosion_fx(pos, radius)
 
 	if proj != null:
@@ -243,7 +250,7 @@ func _explosion_fx(pos: Vector2, radius: float) -> void:
 func _update_guide(t: Tank) -> void:
 	var pts := PackedVector2Array()
 	var pos: Vector2 = t.muzzle_pos()
-	var vel: Vector2 = t.muzzle_dir() * t.power
+	var vel: Vector2 = t.muzzle_world_dir() * t.power
 	var dt := 1.0 / 60.0
 	for i in range(GUIDE_STEPS):
 		pts.append(pos)

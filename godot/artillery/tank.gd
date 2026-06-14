@@ -5,7 +5,8 @@ class_name Tank
 # Origin = ground-contact point (bottom centre).
 
 const SHEET := preload("res://artillery/art/Artillery.png")
-const TANK_SCALE := 0.36
+const TANK_SCALE := 0.28
+const TURRET_MUL := 0.78        # turret + barrel are smaller than the hull
 const MAX_HP := 100.0
 
 # Sheet regions — index 0 = green (P1), 1 = orange (P2).
@@ -15,8 +16,8 @@ const BARREL_REGION := [Rect2(556, 156, 156, 48), Rect2(556, 364, 160, 48)]
 const PEACH_REGION := Rect2(768, 212, 132, 136)
 
 # Turret mount point in world px (post-scale) — where the turret dome + barrel sit in the hull hole.
-const TURRET_POS := Vector2(0, -44)
-const BAR_W := 98.0
+const TURRET_POS := Vector2(-1, -40)
+const BAR_W := 82.0
 
 var hp := MAX_HP
 var fuel := 160.0
@@ -50,10 +51,10 @@ func setup(variant: int, in_facing: int) -> void:
 	barrel.z_index = 1
 	add_child(barrel)
 	var br: Rect2 = BARREL_REGION[variant]
-	barrel_len = br.size.x * TANK_SCALE
-	_sprite(br, Vector2(barrel_len * 0.5, 0), barrel)
+	barrel_len = br.size.x * TANK_SCALE * TURRET_MUL
+	_sprite(br, Vector2(barrel_len * 0.5, 0), barrel, TANK_SCALE * TURRET_MUL)
 
-	turret_sprite = _sprite(TURRET_REGION[variant], TURRET_POS, self)
+	turret_sprite = _sprite(TURRET_REGION[variant], TURRET_POS, self, TANK_SCALE * TURRET_MUL)
 	turret_sprite.z_index = 2
 	if facing == -1:
 		turret_sprite.flip_h = true
@@ -69,11 +70,16 @@ func set_turret_pos(p: Vector2) -> void:
 		barrel.position = p
 
 func muzzle_dir() -> Vector2:
+	# LOCAL aim direction (used to rotate the barrel sprite).
 	var a := deg_to_rad(aim_deg)
 	return Vector2(cos(a) * facing, -sin(a))
 
+func muzzle_world_dir() -> Vector2:
+	# Actual fire direction in world space — includes the tank's terrain tilt.
+	return barrel.global_transform.x.normalized()
+
 func muzzle_pos() -> Vector2:
-	return barrel.global_position + muzzle_dir() * barrel_len
+	return barrel.global_position + muzzle_world_dir() * barrel_len
 
 func aim(d: float) -> void:
 	aim_deg = clampf(aim_deg + d, 0.0, 85.0)
@@ -104,12 +110,12 @@ func _refresh() -> void:
 	hp_fill.color = Color(0.9, 0.2, 0.2).lerp(Color(0.2, 0.9, 0.3), frac)
 	fuel_fill.scale.x = clampf(fuel / max_fuel, 0.0, 1.0)
 
-func _sprite(region: Rect2, pos: Vector2, parent: Node) -> Sprite2D:
+func _sprite(region: Rect2, pos: Vector2, parent: Node, sc := TANK_SCALE) -> Sprite2D:
 	var s := Sprite2D.new()
 	s.texture = SHEET
 	s.region_enabled = true
 	s.region_rect = region
-	s.scale = Vector2(TANK_SCALE, TANK_SCALE)
+	s.scale = Vector2(sc, sc)
 	s.position = pos
 	parent.add_child(s)
 	return s
