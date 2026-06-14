@@ -42,6 +42,12 @@ var tune_label: Label
 var guide: DashedLine
 var tune_pivot := Tank.TURRET_POS
 
+# Camera (zooms onto the active player; zooms out between turns).
+const ZOOM_IN := Vector2(1.7, 1.7)
+const ZOOM_OUT := Vector2(1.0, 1.0)
+var cam: Camera2D
+var cam_tween: Tween
+
 func _ready() -> void:
 	var bg := Sprite2D.new()
 	bg.texture = load("res://artillery/art/Background.png")
@@ -78,7 +84,35 @@ func _ready() -> void:
 	tune_label.position = Vector2(20, VIEW.y - 40)
 	hud.add_child(tune_label)
 
+	cam = Camera2D.new()
+	cam.limit_left = 0
+	cam.limit_top = 0
+	cam.limit_right = int(VIEW.x)
+	cam.limit_bottom = int(VIEW.y)
+	cam.position = VIEW * 0.5
+	cam.zoom = ZOOM_OUT
+	add_child(cam)
+	cam.make_current()
+
 	_update_info()
+	_focus_active()
+
+# ---- camera ----
+func _focus(pos: Vector2, zoom: Vector2, dur: float) -> void:
+	if cam_tween != null:
+		cam_tween.kill()
+	cam_tween = create_tween()
+	cam_tween.set_parallel(true)
+	cam_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	cam_tween.tween_property(cam, "position", pos, dur)
+	cam_tween.tween_property(cam, "zoom", zoom, dur)
+
+func _focus_active() -> void:
+	var t: Tank = tanks[active]
+	_focus(t.position + Vector2(0, -40), ZOOM_IN, 0.6)
+
+func _zoom_out() -> void:
+	_focus(VIEW * 0.5, ZOOM_OUT, 0.5)
 
 func _spawn_tank(x: float, variant: int, facing: int) -> void:
 	var t := Tank.new()
@@ -115,6 +149,7 @@ func _process(delta: float) -> void:
 				active = (active + 1) % tanks.size()
 				state = "aim"
 				_update_info()
+				_focus_active()      # zoom onto the new active player
 
 func _aim_phase(delta: float) -> void:
 	var t: Tank = tanks[active]
@@ -148,7 +183,6 @@ func _aim_phase(delta: float) -> void:
 		t.change_power(-POWER_RATE * delta)
 
 	_update_guide(t)
-	_update_info()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if state != "aim":
@@ -168,6 +202,7 @@ func _fire() -> void:
 	proj.position = t.muzzle_pos()
 	proj_vel = t.muzzle_world_dir() * t.power
 	state = "flying"
+	_zoom_out()                      # zoom out to watch the shot
 	_update_info()
 
 func _fly_phase(delta: float) -> void:
@@ -216,8 +251,55 @@ func _explode(pos: Vector2) -> void:
 
 func _game_over() -> void:
 	state = "over"
-	var win := "GREEN (P1)" if tanks[1].is_dead() else "ORANGE (P2)"
-	info.text = "%s WINS!   (press F5 to restart)" % win
+	_zoom_out()
+	info.visible = false
+	tune_label.visible = false
+	guide.visible = false
+	if tanks[0].is_dead():
+		_show_winner("ORANGE", Color(1.0, 0.55, 0.2))
+	else:
+		_show_winner("GREEN", Color(0.5, 0.9, 0.4))
+
+func _show_winner(team_name: String, col: Color) -> void:
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.0)
+	dim.size = VIEW
+	hud.add_child(dim)
+	create_tween().tween_property(dim, "color:a", 0.5, 0.5)
+
+	var label := Label.new()
+	label.text = "%s WINS!" % team_name
+	label.add_theme_font_size_override("font_size", 100)
+	label.add_theme_color_override("font_color", col)
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", 16)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.size = Vector2(900, 200)
+	label.position = Vector2(VIEW.x * 0.5 - 450, VIEW.y * 0.5 - 140)
+	label.pivot_offset = Vector2(450, 100)
+	hud.add_child(label)
+	label.modulate.a = 0.0
+	label.scale = Vector2(0.5, 0.5)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(label, "modulate:a", 1.0, 0.3)
+	tw.tween_property(label, "scale", Vector2.ONE, 0.55).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+	var sub := Label.new()
+	sub.text = "press F5 to restart"
+	sub.add_theme_font_size_override("font_size", 30)
+	sub.add_theme_color_override("font_color", Color.WHITE)
+	sub.add_theme_color_override("font_outline_color", Color.BLACK)
+	sub.add_theme_constant_override("outline_size", 6)
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.size = Vector2(900, 40)
+	sub.position = Vector2(VIEW.x * 0.5 - 450, VIEW.y * 0.5 + 55)
+	hud.add_child(sub)
+	sub.modulate.a = 0.0
+	var tw2 := create_tween()
+	tw2.tween_interval(0.55)
+	tw2.tween_property(sub, "modulate:a", 1.0, 0.4)
 
 # ---- visuals / hud ----
 func _make_proj(_w: int) -> Node2D:
@@ -284,10 +366,7 @@ func _tune_barrel(delta: float) -> void:
 
 func _update_info() -> void:
 	var t: Tank = tanks[active]
-	var who := "GREEN (P1)" if active == 0 else "ORANGE (P2)"
-	info.text = "%s — turn    angle %d°   power %d   fuel %d   weapon: %s\nGREEN HP %d    ORANGE HP %d    A/D move  W/S or stick aim  R/F or arrows power  Q weapon  SPACE fire" % [
-		who, roundi(t.aim_deg), roundi(t.power), roundi(t.fuel), WEAPON_NAMES[t.weapon],
-		roundi(tanks[0].hp), roundi(tanks[1].hp)]
+	info.text = "Weapon: %s        A/D move   W/S aim   R/F or arrows power   Q weapon   SPACE fire" % WEAPON_NAMES[t.weapon]
 
 func _add_rect(pos: Vector2, size: Vector2, col: Color, z: int) -> void:
 	var poly := Polygon2D.new()

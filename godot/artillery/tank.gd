@@ -6,7 +6,7 @@ class_name Tank
 
 const SHEET := preload("res://artillery/art/Artillery.png")
 const TANK_SCALE := 0.28
-const TURRET_MUL := 0.78        # turret + barrel are smaller than the hull
+const TURRET_MUL := 0.66        # turret + barrel are smaller than the hull
 const MAX_HP := 100.0
 
 # Sheet regions — index 0 = green (P1), 1 = orange (P2).
