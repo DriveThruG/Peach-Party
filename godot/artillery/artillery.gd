@@ -5,7 +5,15 @@ extends Node2D
 # Controls (active player only):  A/D move (costs fuel)   W/S aim   R/F power   Q weapon   SPACE fire
 
 const VIEW := Vector2(1280, 720)
-const GROUND_Y := 575.0          # on the background's sand; tune to match the art
+# Ground surface sampled from Background.png (the wavy sand), evenly spaced 0..1280. terrain_y() lerps it.
+const TERRAIN := [
+	Vector2(0, 432), Vector2(40, 427), Vector2(80, 422), Vector2(120, 417), Vector2(160, 412), Vector2(200, 408),
+	Vector2(240, 406), Vector2(280, 407), Vector2(320, 415), Vector2(360, 425), Vector2(400, 435), Vector2(440, 439),
+	Vector2(480, 437), Vector2(520, 433), Vector2(560, 431), Vector2(600, 433), Vector2(640, 441), Vector2(680, 452),
+	Vector2(720, 462), Vector2(760, 468), Vector2(800, 469), Vector2(840, 468), Vector2(880, 465), Vector2(920, 461),
+	Vector2(960, 456), Vector2(1000, 450), Vector2(1040, 443), Vector2(1080, 438), Vector2(1120, 437), Vector2(1160, 438),
+	Vector2(1200, 439), Vector2(1240, 439), Vector2(1280, 438)
+]
 const GRAVITY := 480.0
 const MOVE_SPEED := 70.0
 const AIM_RATE := 42.0
@@ -32,7 +40,7 @@ var hud: CanvasLayer
 var info: Label
 var tune_label: Label
 var guide: DashedLine
-var tune_pivot := Tank.BARREL_PIVOT
+var tune_pivot := Tank.TURRET_POS
 
 func _ready() -> void:
 	var bg := Sprite2D.new()
@@ -75,9 +83,18 @@ func _ready() -> void:
 func _spawn_tank(x: float, variant: int, facing: int) -> void:
 	var t := Tank.new()
 	add_child(t)
-	t.position = Vector2(x, GROUND_Y)
+	t.position = Vector2(x, terrain_y(x))
 	t.setup(variant, facing)
 	tanks.append(t)
+
+# Ground height at world x (lerp the sampled TERRAIN curve).
+func terrain_y(x: float) -> float:
+	var step := VIEW.x / float(TERRAIN.size() - 1)
+	var fx := clampf(x, 0.0, VIEW.x) / step
+	var i := int(fx)
+	if i >= TERRAIN.size() - 1:
+		return TERRAIN[TERRAIN.size() - 1].y
+	return lerpf(TERRAIN[i].y, TERRAIN[i + 1].y, fx - float(i))
 
 func _process(delta: float) -> void:
 	guide.visible = (state == "aim")
@@ -106,6 +123,7 @@ func _aim_phase(delta: float) -> void:
 	if mv != 0.0 and t.fuel > 0.0:
 		var dx := mv * MOVE_SPEED * delta
 		t.position.x = clampf(t.position.x + dx, 70.0, VIEW.x - 70.0)
+		t.position.y = terrain_y(t.position.x)      # follow the wavy ground
 		t.spend_fuel(absf(dx))
 
 	# Aim: keys (W/S) OR the left analog stick (push it where you want to aim).
@@ -157,8 +175,8 @@ func _fly_phase(delta: float) -> void:
 			_explode(p)
 			return
 	# Hit the ground or leave the field?
-	if p.y >= GROUND_Y or p.x < -40.0 or p.x > VIEW.x + 40.0 or p.y > VIEW.y + 40.0:
-		_explode(Vector2(p.x, minf(p.y, GROUND_Y)))
+	if p.y >= terrain_y(p.x) or p.x < -40.0 or p.x > VIEW.x + 40.0 or p.y > VIEW.y + 40.0:
+		_explode(Vector2(p.x, minf(p.y, terrain_y(p.x))))
 		return
 
 func _explode(pos: Vector2) -> void:
@@ -174,6 +192,7 @@ func _explode(pos: Vector2) -> void:
 			if dir.length() < 1.0:
 				dir = Vector2(0, -1)
 			t.position.x = clampf(t.position.x + dir.normalized().x * KNOCKBACK[w] * k, 70.0, VIEW.x - 70.0)
+			t.position.y = terrain_y(t.position.x)
 	_explosion_fx(pos, radius)
 
 	if proj != null:
@@ -230,8 +249,8 @@ func _update_guide(t: Tank) -> void:
 		pts.append(pos)
 		vel.y += GRAVITY * dt
 		pos += vel * dt
-		if pos.y >= GROUND_Y:
-			pts.append(Vector2(pos.x, GROUND_Y))
+		if pos.y >= terrain_y(pos.x):
+			pts.append(Vector2(pos.x, terrain_y(pos.x)))
 			break
 	guide.set_points(pts)
 
@@ -253,8 +272,8 @@ func _tune_barrel(delta: float) -> void:
 		changed = true
 	if changed:
 		for t in tanks:
-			t.set_barrel_pivot(tune_pivot)
-	tune_label.text = "barrel tune  J/L x  I/K y   ->   BARREL_PIVOT=(%d, %d)" % [roundi(tune_pivot.x), roundi(tune_pivot.y)]
+			t.set_turret_pos(tune_pivot)
+	tune_label.text = "turret tune  J/L x  I/K y   ->   TURRET_POS=(%d, %d)" % [roundi(tune_pivot.x), roundi(tune_pivot.y)]
 
 func _update_info() -> void:
 	var t: Tank = tanks[active]
